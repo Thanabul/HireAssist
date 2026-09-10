@@ -1,0 +1,91 @@
+# ── OS ────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# ── Editors / IDEs ────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+.claude/
+
+# ── Secrets & local config ────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# ── Node ──────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Python ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ── Go ────────────────────────────────────────────────
+bin/
+vendor/
+*.test
+*.out
+
+# ── Java / Gradle / Maven ─────────────────────────────
+target/
+.gradle/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# ── Docker / infra ────────────────────────────────────
+docker-compose.override.yml
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# ── Data & uploads ────────────────────────────────────
+# Never commit real resumes or candidate data — PDPA.
+/data/
+/uploads/
+/tmp/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+
+# ── Load-test output ──────────────────────────────────
+k6-results/
+*.jtl
+load-test-results/
+
+# ── Docs build artefacts ──────────────────────────────
+*.pdf.tmp
+~$*.docx
+~$*.pptx

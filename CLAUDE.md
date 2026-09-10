@@ -24,14 +24,19 @@ It is a *summary* log, not a diff — Git already has the diffs. Record the deci
 reason for it, in prose a teammate can read months later. The test: if someone could
 reasonably ask *"why did we do that?"*, the answer belongs in the changelog.
 
-- One entry per working session, newest first, dated `YYYY-MM-DD`.
+- **One entry per working session**, newest first, dated `YYYY-MM-DD`. Start a new entry at
+  the top of the file — never edit an entry that is already committed, even one from today.
+  An entry records what a session decided; rewriting it destroys when and why things changed.
+  Two entries on the same date are fine — give them distinguishing titles.
+- The `2026-09-10 — Initial proposal and repository setup` entry is the **frozen baseline**
+  covering everything up to the first commit. Leave it alone.
 - Write **why**, not just what. "Deferred re-matching" is useless; "deferred re-matching
   because it cannot be demonstrated without a deep talent pool and raises purpose-limitation
   questions UC-5 must answer first" is the point.
 - Record decisions that were *reversed* or *reconsidered* too. Knowing that something was
-  tried and rejected is worth as much as knowing what was chosen.
+  tried and rejected is worth as much as knowing what was chosen. If a later entry overturns
+  an earlier one, say so and name the entry it supersedes — do not go back and amend it.
 - Note what is still outstanding at the end of an entry.
-- Append to the current session's entry rather than creating a second entry for the same day.
 
 ---
 
@@ -79,17 +84,51 @@ recorded like one.
 
 ## ADRs
 
-Format is fixed by the course: **Context · Decision · Status · Consequences**. Use
-`docs/adr/TEMPLATE.md`; the reasoning behind the format is in that file, drawn from the
-lecturer's good and bad samples in `docs/reference/`.
+Use `docs/adr/TEMPLATE.md`. It follows the **Jeff Tyree & Art Akerman** template from the
+course slides (see *Context outside this repository* below), grouped as *Summary · Details · Related · Notes*, with
+our additions: a Date/Deciders header, a one-sentence Alexandrian summary, and explicitly
+optional fields. The full guidance — including what the lecturer's deliberately bad sample
+gets wrong — lives in that file.
 
+- **Positions is the field that matters.** If you cannot name a rejected alternative, it is
+  not an ADR.
+- **Implications must include the negatives.** An all-positive ADR has not examined the
+  trade-off.
+- **Related requirements is not optional.** Map every decision to the use cases it serves and
+  to `docs/course/REQUIREMENTS.md` — traceability is graded.
+- Skip optional fields rather than padding them with "N/A". Filler hides the real content.
 - Write the ADR when the decision is made. Reconstructing the reasoning later does not work —
-  the alternatives that were rejected are exactly what gets forgotten.
+  the rejected alternatives are exactly what gets forgotten.
 - Add the `INDEX.md` row in the same commit as the ADR.
-- If you cannot name a rejected alternative, it is not an ADR.
 - Superseding never edits the original: set the old status to *Superseded by ADR-NNN*.
 - A decision recorded in an ADR that contradicts `PROPOSAL.md` means `PROPOSAL.md` is now
   wrong — fix it.
+
+---
+
+## Context outside this repository
+
+Some material that shaped this project is **not in the repo** and is not available to a fresh
+clone or a new session. Do not link to it by path and do not assume anyone can open it.
+
+| What | Where it actually is | How we handle it |
+|---|---|---|
+| Course slide decks (`4-1-ADRs.pdf`, decomposition, DDD, …) | The team's own machines, under the course folder — *outside this repo* | Anything we rely on gets summarised into a repo document. The ADR template already carries what we needed from the ADR deck. |
+| Course syllabus | Same — outside this repo | Deliberately not committed |
+| The lecturer's ADR samples | **In the repo**, `docs/reference/` | Safe to reference |
+| Course requirements & grading | **In the repo**, `docs/course/` — copies | Safe to reference |
+| The assignment brief and submission guideline | **In the repo**, `docs/course/ASSIGNMENT.md` | Safe to reference |
+| Verbal guidance given in class, or decisions made in chat | Nowhere, unless written down | This is the dangerous one — see below |
+
+**The rule:** if a decision, constraint or piece of guidance influences the documents, it must
+be captured *inside the repo* — in `docs/course/ASSIGNMENT.md`, `docs/PROPOSAL.md`,
+`docs/CONTEXT.md`, an ADR, or `CHANGELOG.md`. A reference to something only one person can
+open is not documentation.
+
+When summarising external material into the repo, say where it came from ("the course slides
+present Tyree & Akerman…") so a reader knows the provenance without needing the source. Do not
+commit the source files themselves — they are the lecturer's material, and the repo stays
+documentation we wrote.
 
 ---
 

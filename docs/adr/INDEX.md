@@ -1,7 +1,9 @@
 # Architecture Decision Records
 
 Each significant architectural decision is recorded here using
-[TEMPLATE.md](TEMPLATE.md) — format: **Context · Decision · Status · Consequences**.
+[TEMPLATE.md](TEMPLATE.md), which follows the **Jeff Tyree & Art Akerman** decision record
+template from the course slides — grouped as *Summary · Details · Related · Notes*, with
+optional fields marked in the template.
 
 The course requires **at least 3 ADRs** as part of the project proposal submission.
 

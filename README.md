@@ -34,6 +34,7 @@ Term project for **Software Architecture**, Chulalongkorn University.
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | **The submission document.** Project description, target customers, use cases, requirements, ADRs. Source of truth. |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | Internal working notes — open questions, open decisions, glossary. Not for submission. |
 | [docs/adr/INDEX.md](docs/adr/INDEX.md) | Architecture Decision Records index. |
+| [docs/course/ASSIGNMENT.md](docs/course/ASSIGNMENT.md) | The assignment brief and submission guideline this proposal is written against. |
 | [docs/course/](docs/course/) | Course requirements and grading breakdown. |
 | [docs/reference/](docs/reference/) | The lecturer's ADR samples (one good, one deliberately poor). |
 | [CHANGELOG.md](CHANGELOG.md) | Dated summary of what changed in the docs, and why. |

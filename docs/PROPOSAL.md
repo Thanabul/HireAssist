@@ -628,11 +628,143 @@ and lawfully, turning a dead archive into a live sourcing channel.
 
 ## Functional Requirements
 
-_TBD._
+## Functional Requirements
+
+Requirements are grouped by the use case they serve. Every requirement is written
+as a single verifiable statement so that it can be referenced from an ADR and from
+the Service–Operations–Collaborators table in Deliverable #2.
+
+### UC-0 — Authenticate and manage workspace access
+
+| ID | Requirement |
+|---|---|
+| FR-01 | The system shall allow a user to sign in to the workspace of their organisation. |
+| FR-02 | The system shall assign every user exactly one role within a workspace: Administrator or Recruiter. |
+| FR-03 | The system shall allow an Administrator to invite a user, deactivate a user, and change a user's role within their own workspace. |
+| FR-04 | The system shall confine every job opening, candidate profile, screening result, and question set to the workspace that owns it. |
+
+### UC-1 — Create a job opening from natural-language requirements
+
+| ID | Requirement |
+|---|---|
+| FR-05 | The system shall allow a recruiter to create a job opening by entering the position requirements as free-form text in Thai or in English. |
+| FR-06 | The system shall derive a structured set of screening criteria from that text, covering required skills, minimum years of experience, education, and language ability. |
+| FR-07 | The system shall present the derived criteria to the recruiter for review, and shall allow each criterion to be added, edited, or removed before the job opening is saved. |
+| FR-08 | The system shall allow a recruiter to mark a criterion as mandatory and to assign a weight to each criterion. |
+| FR-09 | The system shall record the set of criteria that was in effect at the time a job opening was saved, so that a past screening result can be explained against the criteria actually used. |
+| FR-10 | The system shall allow a recruiter to close a job opening. |
+
+### UC-2 — Batch-screen resumes against a job opening
+
+| ID | Requirement |
+|---|---|
+| FR-11 | The system shall allow a recruiter to upload multiple resume files in PDF or DOCX format as a single batch against a selected job opening. |
+| FR-12 | The system shall extract the candidate's name, contact details, education, work experience, and skills from each uploaded resume. |
+| FR-13 | The system shall store every extracted candidate profile so that it can be reused for other job openings within the same workspace. |
+| FR-14 | The system shall compute a match score between 0 and 100 for each candidate against the screening criteria of the selected job opening. |
+| FR-15 | The system shall produce a written justification for every match score, stating which criteria the candidate met and which the candidate did not meet. |
+| FR-16 | The system shall mark a candidate as not qualified when a criterion marked mandatory is not met, and shall record which criterion caused it. |
+| FR-17 | The system shall present the screened candidates as a list ranked by match score, filterable by minimum score and by an individual criterion. |
+| FR-18 | The system shall report every resume that could not be parsed, together with the reason, so that the recruiter can handle it manually. |
+| FR-19 | The system shall notify the recruiter when a batch screening run has finished. |
+
+### UC-3 — Generate candidate-specific interview questions
+
+| ID | Requirement |
+|---|---|
+| FR-20 | The system shall allow a recruiter to request a set of interview questions for a selected candidate and job opening. |
+| FR-21 | The system shall derive the questions from the candidate's profile and from the screening criteria that the candidate did not clearly meet, and shall group each question under the criterion it is intended to probe. |
+| FR-22 | The system shall allow a recruiter to regenerate the set or to edit an individual question. |
+| FR-23 | The system shall store the question set so that it can be retrieved again before the interview. |
+
+### UC-4 — Monitor hiring pipeline and stale positions
+
+| ID | Requirement |
+|---|---|
+| FR-24 | The system shall display, for each open job opening, the number of candidates screened, the number still awaiting review, and the date of the most recent screening run. |
+| FR-25 | The system shall record the date on which each job opening was opened. |
+| FR-26 | The system shall allow an Administrator to configure the number of days after which an open job opening is treated as stale. |
+| FR-27 | The system shall identify job openings that have exceeded the stale threshold and notify the recruiter responsible for each of them. |
+
+### UC-5 — Enforce candidate data retention
+
+| ID | Requirement |
+|---|---|
+| FR-28 | The system shall record, for every candidate profile, the date on which the personal data was collected and the lawful basis for processing it. |
+| FR-29 | The system shall allow an Administrator to configure the retention period for candidate personal data within their workspace. |
+| FR-30 | The system shall identify candidate profiles whose retention period has expired and delete or anonymise them without manual intervention. |
+| FR-31 | The system shall allow an Administrator to delete or anonymise a specific candidate's personal data on request. |
+| FR-32 | The system shall remove or anonymise a candidate's personal data everywhere it is held — profile, stored resume file, screening result, justification text, and generated question set — as a single operation, leaving no partial record behind. |
+| FR-33 | The system shall write an audit record for every retention action, stating what was removed, when it was removed, and on what basis. |
+
+---
 
 ## Non-functional Requirements
 
-_TBD._
+### Operational
+
+| ID | Requirement |
+|---|---|
+| NFR-01 | The system shall be accessible through current versions of Chrome, Safari, and Edge on desktop. |
+| NFR-02 | The system shall be deployed on cloud infrastructure. |
+| NFR-03 | The system shall be available at least 99% of the time during working hours, defined as Monday to Friday, 08:00–20:00 ICT. |
+| NFR-04 | The system shall accept resume files of up to 10 MB each and batches of up to 200 files. |
+
+### Performance
+
+| ID | Requirement |
+|---|---|
+| NFR-05 | The system shall parse and score a single resume within 5 seconds. |
+| NFR-06 | The system shall complete a batch screening of 100 resumes within 10 minutes. |
+| NFR-07 | The system shall return the ranked candidate list within 2 seconds for a job opening holding up to 1,000 screened candidates. |
+| NFR-08 | The system shall generate a set of interview questions within 15 seconds. |
+| NFR-09 | The system shall support at least 20 concurrent recruiters without exceeding the response times stated above. |
+
+### Security
+
+| ID | Requirement |
+|---|---|
+| NFR-10 | The system shall encrypt candidate personal data at rest, and shall transmit all data over TLS 1.2 or higher. |
+| NFR-11 | The system shall enforce role-based access control with the roles Administrator and Recruiter. |
+| NFR-12 | The system shall prevent any user from reading data belonging to a workspace other than their own. |
+| NFR-13 | The system shall record an audit log of every read and every export of candidate personal data, and shall retain that log for at least one year. |
+| NFR-14 | The system shall keep a candidate's match score and the justification for it visible only to authorised staff of the hiring organisation; neither shall be disclosed to the candidate. |
+
+### Cultural and Legal
+
+| ID | Requirement |
+|---|---|
+| NFR-15 | The system shall comply with Thailand's Personal Data Protection Act B.E. 2562 (2019). |
+| NFR-16 | The system shall comply with Thailand's Computer Crime Act B.E. 2560 (2017). |
+| NFR-17 | The system shall complete a valid request to delete a candidate's personal data within 30 days of receiving it. |
+| NFR-18 | The system shall process resumes written in Thai and in English. |
+| NFR-19 | The system shall exclude gender, age, marital status, religion, nationality, and photograph from the data used to compute a match score. |
+
+### Usability
+
+| ID | Requirement |
+|---|---|
+| NFR-20 | The system shall provide a responsive user interface usable on desktop and tablet. |
+| NFR-21 | A recruiter shall be able to complete a first batch screening without prior training, guided by the interface alone. |
+| NFR-22 | The system shall display, for every match score, the criteria that produced it, so that a recruiter can verify a result without reading the whole resume. |
+| NFR-23 | The system shall provide the user interface in Thai and in English. |
+
+---
+
+### Architecturally significant requirements
+
+The following non-functional requirements are expected to drive an architectural
+decision and should each be answered by an ADR.
+
+| NFR | Question it forces |
+|---|---|
+| NFR-06, NFR-09 | Invoking a language model once per resume is slow and costly at 100+ resumes. Does screening need a tiered pipeline — a cheap deterministic filter first, the model only on the shortlist? |
+| NFR-15, NFR-17 | Resumes are personal data under the PDPA. May they be sent to a third-party model provider, or must the model be self-hosted? |
+| NFR-14, NFR-19 | A score must never reach the candidate, and protected attributes must not influence it. Where is that enforced, and how is it proved during an audit? |
+| NFR-22 | A score must be explainable. This rules out an opaque scorer and requires per-criterion evidence to be persisted alongside the score. |
+| FR-32 | Deleting one candidate must reach every place the data is held. Which component owns that cascade, and how does it stay correct as new components are added? |
+
+
 
 ## ADRs
 

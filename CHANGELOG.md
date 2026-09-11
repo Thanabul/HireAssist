@@ -12,6 +12,122 @@ and why something changed.
 
 ---
 
+## 2026-09-11 — Invitation-email «extend» removed from the use case diagram
+
+**_Draft Interview Invitation Email_ is gone from the diagram,** along with the extension point
+_candidate shortlisted_ on UC-2 and the condition note on the arrow. This closes the gap left open
+by the _Use case diagram redrawn in UML, as code_ entry below. That entry offered two ways out:
+write the behaviour into UC-2 and add a requirement for it, or take the «extend» off the diagram.
+We took the second.
+
+The reason is consistency. The assignment asks for a diagram that agrees with the use cases, and
+this was the only element with nothing behind it. UC-2's flows never mentioned an invitation, and no
+functional requirement backed one; it survived only from the original idea list. Keeping it would have shown graders a feature the proposal does not deliver.
+Adding it properly would have grown UC-2's scope for behaviour that does nothing for the core
+problem of screening capacity.
+
+The diagram now carries no «include» or «extend» relationships at all. The rationale in
+`PROPOSAL.md` says so and explains why, as `docs/course/ASSIGNMENT.md` asks: they are not
+required, and should not be added only to make a diagram look more complex. The provenance table in `CONTEXT.md` records
+that the original _first draft email for interview meeting_ idea was dropped.
+
+Removing the extension also cleaned up the rendered layout. The System Scheduler and Candidate
+associations no longer cross the boundary at odd angles.
+
+**Still outstanding.** The two UC-6 questions from the entry below, about how an invited person
+sets their password and whether the last Admin can be removed. No ADRs are written yet.
+
+---
+
+## 2026-09-11 — UC-0 split: Guest signs in, Admin manages access (UC-6)
+
+**UC-0 is now _Authenticate into a workspace_, and its actor is a new Guest.** The old UC-0 bundled
+two things with different actors and different goals: every user signs in every session, while
+only an Admin, occasionally, decides who belongs to the workspace. Keeping them together hid the
+Admin's distinct responsibility inside a use case everyone takes part in, and made Recruiter and
+Admin actors of their own sign-in, which is circular.
+
+**The Guest establishes a convention the documents now rely on:** _Recruiter_ and _Admin_ always
+mean a signed-in user. That is what lets UC-1 to UC-6 name those actors without repeating the
+sign-in, and it is why UC-0 is drawn once, against the Guest, rather than as «include» arrows from
+every other use case. No generalisation is drawn between Guest and Recruiter or Admin, since
+signing in changes the role a person plays and a Recruiter is not a kind of Guest. The term is in
+the glossary. UC-1 and UC-2 still list authentication as a precondition. Under the convention
+that is redundant but not wrong, so it was left alone, and UC-0 says the other use cases _need not_
+repeat the sign-in rather than that they never do.
+
+**Managing access became UC-6, _Manage workspace access_, with Admin as its actor.** It took the
+next free number rather than slotting in as UC-1. Inserting it would have shifted UC-1 to UC-5
+and, through the `FR-<use case>.<n>` scheme, renumbered 44 requirements whose IDs are meant to be
+stable, as well as every cross-reference to them. `CLAUDE.md` now states the rule so the next new
+use case follows it. The cost is that the ID order no longer follows the order a user meets the
+features.
+
+**Requirements.** FR-0.5 (invite, remove, change role) was struck and moved unchanged to FR-6.1,
+following the rule that a withdrawn ID is struck, never reused. FR-0.1 now authenticates a Guest
+instead of "an Admin or Recruiter". FR-0.2, FR-0.3, FR-0.4 and FR-0.6 stay with UC-0: they govern
+the session token and what every request under it may do, which is not specific to managing
+members. The total is still 50.
+
+**Diagram.** Guest was added with its association to UC-0. Recruiter no longer associates with UC-0.
+Admin gained an association with UC-6. Admin still specialises Recruiter, now inheriting UC-1 to
+UC-4. Guest and UC-0 sit at the bottom of the rendered image, because they are not connected to
+the rest of the graph and Graphviz lays them out last. Several hidden-link layouts were tried to
+move them to the top, and each one scrambled the use case order or crossed lines, so they were
+dropped. Position carries no meaning in a UML use case diagram.
+
+Nothing else in the use cases changed, as the feedback asked.
+
+**Still outstanding.** Two gaps that splitting UC-6 out made visible, both now open questions in
+`CONTEXT.md`. First, nothing covers how an invited person sets the password UC-0 checks. Second,
+nothing stops the last Admin being removed or demoted, which would leave a workspace that no one
+can administer. UC-6 has a single requirement, so these may justify more. The invitation-email
+«extend» gap from the entry below is still open.
+
+---
+
+## 2026-09-11 — Use case diagram redrawn in UML, as code
+
+**The use case diagram now lives in its own file as PlantUML**, at
+`docs/diagrams/use-case-diagram.puml`, with an SVG rendered from it. `PROPOSAL.md` embeds the SVG
+and links to the source. The inline Mermaid block was removed rather than kept beside it: two
+copies of one diagram would drift, which is the same failure the PROPOSAL/CONTEXT split exists
+to prevent. The relationships rationale and the notes stay in `PROPOSAL.md`, because they are
+settled content a grader reads next to the picture.
+
+This closes the item both earlier entries left outstanding — redraw in proper UML for submission.
+
+**Why PlantUML and not Mermaid.** Mermaid has no use case diagram type; the draft was a
+flowchart with rounded boxes standing in for use cases. It could not draw stick-figure actors,
+actor generalisation, or an extension point, so it approximated UML rather than using it.
+PlantUML has native use case syntax and draws all of those. It is still diagram-as-code, so the
+diagram is diffable in Git and reviewed like any other document change.
+
+The cost is rendering. GitHub renders Mermaid inline but not PlantUML, so the SVG must be
+committed alongside the source and re-rendered after every edit — a stale image is a stale
+diagram, and nothing enforces it. Step 4 of the use-case checklist in `CLAUDE.md` now says to
+re-render and commit both files together. Anyone editing the diagram needs PlantUML locally
+(`brew install plantuml`, or the jar with Java, or an editor extension).
+
+**What the UML version shows that the draft could not:**
+
+- **Admin is drawn as a specialisation of Recruiter** (actor generalisation), so it inherits the
+  Recruiter associations UC-0 to UC-4, and only its own association to UC-5 is drawn. The draft's
+  note described this relationship but the picture never showed it, and the note called Admin a
+  _generalisation_ of Recruiter, which is the wrong way round — corrected to _specialises_.
+- **UC-2 declares the extension point** _candidate shortlisted_, and the «extend» arrow from
+  _Draft Interview Invitation Email_ carries its condition — the Recruiter chooses to invite a
+  shortlisted candidate. The draft had the arrow but neither the point nor the condition.
+
+No use case or actor was added or removed.
+
+**Still outstanding.** _Draft Interview Invitation Email_ appears only in the diagram and its
+rationale — UC-2's flows never mention it, and no functional requirement backs it. Either UC-2
+gains an alternate flow and FR-2.x a requirement, or the «extend» comes off the diagram. No ADRs
+are written yet.
+
+---
+
 ## 2026-09-11 — Requirements: reconciled, extracted, and rebuilt around quality attributes
 
 **UC-2 accepts PDF only.** Settled while reviewing draft functional requirements: DOCX was

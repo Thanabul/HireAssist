@@ -18,15 +18,15 @@ scope for this term project.
 
 ---
 
-## UC-0 — Authenticate and manage workspace access
+## UC-0 — Authenticate into a workspace
 
 | ID | Requirement |
 |---|---|
-| FR-0.1 | The system shall authenticate an Admin or Recruiter by email address and password, and issue a session token identifying the user, their workspace, and their role. |
+| FR-0.1 | The system shall authenticate a Guest by email address and password as a member of a workspace, and issue a session token identifying the user, their workspace, and their role, under which the user acts as a Recruiter or an Admin. |
 | FR-0.2 | The system shall reject any request presenting a missing, invalid, or expired session token. |
 | FR-0.3 | The system shall scope every data access to the workspace identified in the session token, such that no workspace can read or modify another workspace's data. |
 | FR-0.4 | The system shall support two roles, Admin and Recruiter, where Admin holds all Recruiter permissions in addition to its own. |
-| FR-0.5 | The system shall allow an Admin to invite a person to the workspace, remove a member, and change a member's role. |
+| ~~FR-0.5~~ | *Withdrawn — moved unchanged to FR-6.1 when managing workspace access became its own use case, UC-6.* |
 | FR-0.6 | The system shall reject any request requiring a role higher than the requester's assigned role, and record the rejected attempt. |
 
 ## UC-1 — Create a job opening from natural-language requirements
@@ -98,6 +98,13 @@ scope for this term project.
 | FR-5.11 | The system shall, where erasure of stored data fails, retain the record, log the failure, retry, and report the record as deletion pending rather than as erased. |
 | FR-5.12 | The system shall exclude expired candidates from the talent pool such that no later processing can surface them. |
 
+## UC-6 — Manage workspace access
+
+| ID | Requirement |
+|---|---|
+| FR-6.1 | The system shall allow an Admin to invite a person to the workspace, remove a member, and change a member's role. |
+
 ---
 
-**50 requirements** — UC-0: 6 · UC-1: 8 · UC-2: 12 · UC-3: 5 · UC-4: 7 · UC-5: 12.
+**50 requirements** — UC-0: 5 · UC-1: 8 · UC-2: 12 · UC-3: 5 · UC-4: 7 · UC-5: 12 · UC-6: 1.
+FR-0.5 is withdrawn and not counted.

@@ -34,6 +34,7 @@ Term project for **Software Architecture**, Chulalongkorn University.
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | **The submission document.** Project description, target customers, use cases, requirements, ADRs. Source of truth. |
 | [docs/FUNCTIONAL-REQUIREMENTS.md](docs/FUNCTIONAL-REQUIREMENTS.md) | 50 functional requirements, traced to the use case each serves. |
 | [docs/NON-FUNCTIONAL-REQUIREMENTS.md](docs/NON-FUNCTIONAL-REQUIREMENTS.md) | 17 non-functional requirements, grouped by quality attribute. |
+| [docs/diagrams/](docs/diagrams/) | Diagrams as code (PlantUML) with their rendered SVGs — currently the use case diagram. |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | Internal working notes — open questions, open decisions, glossary. Not for submission. |
 | [docs/adr/INDEX.md](docs/adr/INDEX.md) | Architecture Decision Records index. |
 | [docs/course/ASSIGNMENT.md](docs/course/ASSIGNMENT.md) | The assignment brief and submission guideline this proposal is written against. |
@@ -47,12 +48,13 @@ Term project for **Software Architecture**, Chulalongkorn University.
 
 | ID | Use Case | Primary Actor |
 |---|---|---|
-| UC-0 | Authenticate and manage workspace access | Admin / Recruiter |
+| UC-0 | Authenticate into a workspace | Guest |
 | UC-1 | Create a job opening from natural-language requirements | Recruiter |
 | UC-2 | Batch-screen resumes against a job opening | Recruiter |
 | UC-3 | Generate candidate-specific interview questions | Recruiter |
 | UC-4 | Monitor hiring pipeline and stale positions | Recruiter |
 | UC-5 | Enforce candidate data retention | System Scheduler / Admin |
+| UC-6 | Manage workspace access | Admin |
 
 One use case — talent-pool re-matching — is deliberately deferred and recorded as **D-1** in
 the proposal.
@@ -73,6 +75,7 @@ hire-assist/
 └── docs/
     ├── PROPOSAL.md          # submission document
     ├── CONTEXT.md           # working notes
+    ├── diagrams/            # diagrams as code (.puml) + rendered .svg
     ├── adr/                 # architecture decision records
     ├── course/              # course requirements & grading
     └── reference/           # lecturer-provided samples

@@ -90,7 +90,7 @@ positive implications means the trade-off has not been examined.*
 ### Related requirements
 
 *Decisions should be requirement-driven. Map this decision to what it serves: the use cases
-(`UC-0`–`UC-5`, `D-1`), the non-functional requirements, and the course requirements in
+(`UC-0`–`UC-6`, `D-1`), the non-functional requirements, and the course requirements in
 `docs/course/REQUIREMENTS.md`. This is where traceability is demonstrated — do not skip it.*
 
 ### Related artifacts *(optional)*

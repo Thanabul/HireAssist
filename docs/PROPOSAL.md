@@ -2,8 +2,8 @@
 
 *Software Architecture — Term Project*
 
-> **Status:** Draft 2 — Project Description and Use Cases complete.
-> Functional Requirements, Non-functional Requirements and ADRs pending.
+> **Status:** Draft 3 — Project Description, Use Cases, Functional and Non-functional
+> Requirements, and the first four ADRs complete. Use case diagram still to be redrawn in UML.
 
 ---
 
@@ -679,4 +679,145 @@ the end of [NON-FUNCTIONAL-REQUIREMENTS.md](NON-FUNCTIONAL-REQUIREMENTS.md).
 
 ## ADRs
 
-_TBD — at least 3._
+Four architecture decisions are recorded so far, each in its own file under
+[`adr/`](adr/) using the Jeff Tyree & Art Akerman template described in
+[`adr/TEMPLATE.md`](adr/TEMPLATE.md). The full records carry the rejected alternatives, the
+arguments, the negative implications, and the mapping to the functional and non-functional
+requirements each decision serves; what follows is a summary and the connective tissue between
+them.
+
+They are best read in order. **ADR-001** draws the service boundaries; **ADR-002** fills in the
+busiest one; **ADR-003** says what each side of those boundaries stores; **ADR-004** fills in the
+external dependency the other three are built to survive.
+
+### ADR-001 — Capability-aligned service decomposition behind an API gateway
+
+HireAssist is five services behind one gateway: **Identity & Workspace** (UC-0), **Hiring**
+(UC-1, UC-2, UC-3), **Resume Processing** (the per-resume work of UC-2), **AI** (every model
+call), and **Compliance & Insights** (UC-4, UC-5). The boundaries follow three properties that
+genuinely differ across the system — who triggers the work (a human, a queued message, or the
+clock), how long it may take (milliseconds, minutes, or a sweep of the talent pool), and what
+data it owns — rather than following technical layers.
+
+The communication style at each boundary follows what crosses it: **REST** for the public,
+browser-facing API through the gateway; **gRPC** into the AI Service, where the contract
+*(profile, criteria) → (score, must-have check, justification)* must not drift; and **RabbitMQ**
+between Hiring and Resume Processing, and for the domain events Compliance & Insights consumes.
+**Service discovery is Kubernetes** — ClusterIP Services and in-cluster DNS, with readiness
+probes deciding which Pods receive traffic, so discovery and health checking are one mechanism
+rather than two that can disagree. All services are written in **Go**.
+
+Rejected: a modular monolith (which would leave the recruiter-facing API sharing a process with
+work that blocks on an external model), one service per use case (UC-1/2/3 share the same two
+aggregates, so splitting them buys network calls and no isolation), decomposition by technical
+layer, and a separate service registry such as Consul.
+
+The cost is accepted openly: candidate data is now distributed, so UC-5's erasure (FR-5.5) must
+reach across services and "deleted" becomes eventually consistent; UC-4's dashboard cannot be a
+query and must be maintained from events; and the team must learn Kubernetes alongside everything
+else.
+
+### ADR-002 — One queued message per resume for batch screening
+
+UC-2 accepts a batch and returns immediately (FR-2.2, within the two seconds NFR-04 allows); each
+resume then travels as **its own message** on RabbitMQ, consumed in parallel by Resume Processing
+replicas. The batch is a count of entries, not a unit of work — which is the decision that
+matters, because it makes the unit of failure the same size as the failure. One corrupt file
+damages one result, not two hundred (FR-2.4).
+
+Delivery is at-least-once (durable quorum queues, publisher confirms, acknowledgement only after
+the result is committed), and redelivery is made harmless by writing results as an upsert keyed on
+`(batch_id, resume_id)`. Failures are classified before they are retried: permanent ones — a
+corrupt file, or a scanned image with no text layer — go straight to *needs manual review*;
+transient ones — rate limits, timeouts, provider errors, or a scoring attempt exceeding NFR-02's
+60-second bound — retry with exponential backoff and are dead-lettered once the budget is
+exhausted, never silently scored zero (FR-2.7). A batch is complete when every entry reaches a
+terminal state, which is what triggers the batch-finished notification (FR-2.12); a
+reconciliation sweep re-publishes entries that have sat pending too long.
+
+**This is where the project's demonstrated software quality attribute is delivered.** The
+attribute is **Scalability**, and NFR-07 is the measurement: batch throughput rises in
+proportion as screening workers are added. The per-resume message is the mechanism — there is no
+in-process work distributor to saturate, no batch-level lock and no ordering constraint, so
+throughput is a deployment parameter changed by adding consumers. The same design is what makes
+NFR-10 — *no accepted resume is ever lost* — true, and the two load tests the course requires are
+designed against those two requirements together: a comparative test of the same 100-resume
+burst at one, two and four workers, and a fault-injection test with the model provider
+deliberately failed, showing zero lost messages and the batch completing once the provider
+returns. Throughput bought by dropping work is not throughput.
+
+Rejected: a synchronous request the recruiter waits on; one message per batch (a retry would
+re-process and re-pay for all 200 resumes); Kafka, whose per-partition ordering means one slow
+resume blocks every message behind it — the exact failure this design exists to prevent; NATS
+JetStream; and a PostgreSQL job table, which would put batch contention on the same database
+serving recruiter traffic.
+
+### ADR-003 — PostgreSQL as system of record, MongoDB for AI-derived documents
+
+The data splits by what happens when it is wrong. **PostgreSQL** holds everything whose
+correctness is load-bearing — memberships and roles, job openings and criteria, batches and their
+per-entry status, decisions with their reasons and human overrides, consent status with the
+collection date and lawful basis (FR-2.11), the retention policy, and the append-only audit logs.
+**MongoDB** holds what the model derives — parsed Candidate Profiles, extracted resume text,
+per-criterion scoring output with its evidence and justification (NFR-15), and interview guides.
+Resume files themselves live in object storage; PostgreSQL holds the key.
+
+The rule recorded for future data: *if getting it wrong is a correctness or compliance problem it
+goes in PostgreSQL; if the model produced it and its shape changes when the prompt changes it goes
+in MongoDB; nothing in PostgreSQL may depend on a MongoDB document for its correctness.*
+
+The architectural reason for the split — not merely the course's two-database requirement — is
+UC-5's **anonymise** action (FR-5.6). Keeping identifying material physically separate from the
+counts the UC-4 dashboard is built from turns anonymisation into *drop the documents, keep the
+rows*: coarse, verifiable, and provable to a regulator, instead of a field-by-field rewrite that
+is one missed column away from a compliance failure.
+
+Rejected: PostgreSQL alone with `jsonb` (a genuinely strong option, and the record says so);
+MongoDB alone (consent, membership and the audit log are exactly what must not drift); PostgreSQL
++ Redis (a cache is not a store); and PostgreSQL + Elasticsearch (full-text ranking is D-1's
+problem, and D-1 is deferred).
+
+The accepted cost is that no transaction spans the two stores, so the single-operation erasure
+FR-5.5 demands is a sequenced operation with a verification pass and the *deletion pending* state
+of FR-5.11 — which is the architectural cause of UC-5's alternate flow 5b.
+
+### ADR-004 — All model access through one AI Service, on a managed API that does not train on our data
+
+Every model call in UC-1, UC-2 and UC-3 goes through the **AI Service**, which is the only
+component holding a model credential or a prompt. It exposes domain operations —
+`ExtractCriteria`, `ScoreProfile`, `GenerateInterviewGuide` — so the provider never appears in
+another service's contract. This is NFR-17 made structural: the scoring model or prompt changes
+without touching any other service.
+
+The provider must be a **managed API whose terms exclude training on our inputs**. This is not a
+preference: a provider that trains on submitted data absorbs every resume into a model weight we
+cannot delete from, which would make UC-5's erasure promise false from the first batch screened.
+The initial choice is the Anthropic Claude API; comparable paid tiers from other providers remain
+substitutes, because the provider is configuration rather than code. Cost and exposure are
+controlled in one place — minimise what is sent, with the protected attributes NFR-14 names
+stripped before the prompt; cache by content; budget per workspace and per batch; meter every
+call — and the **model version is recorded with every score**, so a justification written in
+March can still be explained in September.
+
+**There is no fallback model.** Rejected alternatives include self-hosting an open-weight model
+(the strongest privacy answer, rejected for lack of any GPU and materially weaker Thai-language
+quality, and recorded as the first thing to revisit if hardware appears) and a managed-plus-local
+hybrid — rejected because a fallback makes a candidate's score depend on which model happened to
+be healthy, and two candidates in the same batch would then be ranked against each other on
+incomparable scores.
+
+The accepted cost is stated plainly: during a provider outage screening produces no scores at all.
+Work waits in the queue and, if the outage outlives the retry budget, lands in *needs manual
+review*. That is the pair ADR-002 and ADR-004 form — running without a fallback is only acceptable
+because NFR-10 holds and no queued work is lost. It also means per-candidate cost scales linearly
+with applicant volume, that the provider's rate limit rather than our worker count may become the
+ceiling on NFR-07, and that personal data crosses a border, which the consent text must disclose.
+
+### Still open
+
+Seven candidate decisions remain, tracked in [`adr/INDEX.md`](adr/INDEX.md) with the requirement
+that forces each: a tiered screening pipeline with a deterministic filter before the model; the
+erasure cascade — orchestration or choreography; the resume ingestion channel; the front-end
+framework; the session and token mechanism for UC-0 and how workspace identity travels on
+internal calls; the scheduler shared by UC-4 and UC-5; and the repository structure. Each will be
+recorded as an ADR when it is decided.

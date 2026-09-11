@@ -12,6 +12,121 @@ and why something changed.
 
 ---
 
+## 2026-09-11 — First four ADRs recorded
+
+*(Later the same day, on top of the* Requirements *entry below.)*
+
+The architecture decisions that had been listed as *candidates* since the repository was created
+are now decided and written up. Four records, deliberately read as a sequence: **ADR-001** draws
+the service boundaries, **ADR-002** fills in the busiest one, **ADR-003** says what each side
+stores, and **ADR-004** fills in the external dependency the other three are built to survive.
+Every record maps its decision to the `FR-` and `NFR-` identifiers the *Requirements* entry
+introduced, so traceability runs requirement → decision rather than decision → vague intent.
+
+**Why four and not three.** The course minimum is three. A fourth was written because the LLM
+decision could not honestly be folded into any of the others — it carries the PDPA argument, and
+leaving it implicit would have meant a system whose central dependency was never chosen on the
+record. Six were considered (adding tech stack and authentication) and cut: the team is four
+students, and two thin ADRs would have diluted four substantial ones. Those remain candidates in
+`docs/adr/INDEX.md`.
+
+**ADR-001 — five services behind a gateway, discovery via Kubernetes.** Boundaries drawn by
+capability, following three properties that genuinely differ: who triggers the work (a human, a
+queued message, or the clock), how long it may take, and what data it owns. Rejected: the modular
+monolith, one service per use case, and decomposition by technical layer. The monolith argument is
+recorded honestly in the ADR's Notes — with no course constraint we would likely have started with
+two deployables, and what survives the constraint is the *shape* of the split, not the count.
+Consul was rejected because Kubernetes already derives the same information from readiness probes
+it is running anyway; the cost is that all four members now have to learn Kubernetes, which is
+recorded as the largest schedule risk the decision creates. Go is the backend language.
+
+The service that owns UC-4 and UC-5 is named **Compliance & Insights**. The *Requirements* entry
+below referred to it in passing as *Insights & Notifications*; that name was provisional, and
+ADR-001 does not adopt it, because retention ownership is the service's defining responsibility
+and notifications are not a service — each event's owner emits its own (FR-2.12 from Hiring,
+FR-4.4 and FR-5.3 from Compliance & Insights).
+
+**ADR-002 — one queued message per resume, on RabbitMQ.** The decision that mattered was not the
+broker but the *unit of work*: per-resume rather than per-batch, so the unit of failure is the
+same size as the failure. With one message per batch, a single corrupt file poisons two hundred
+resumes and a retry re-pays every LLM call already made. Kafka was rejected on head-of-line
+blocking — one slow resume would stall its partition, which is precisely the failure this design
+exists to prevent — and a PostgreSQL job table was rejected because it would put batch contention
+on the same database serving recruiter traffic, undoing ADR-001's boundary from below.
+
+**The demonstrated quality attribute was reconsidered, and Scalability stands.** ADR-002 was
+first drafted with *Reliability* as the attribute the project demonstrates — the design's most
+distinctive property is that no dependency failure loses work, and UC-2's alternate flow 4a
+already promised it. On rebasing onto the *Requirements* entry, which had independently chosen
+Scalability (NFR-07) that morning, we kept Scalability rather than overturn a teammate's merged
+decision. The reasons it was the right call, not merely the polite one: NFR-07 is easier to show
+live — add workers, watch the throughput line — while a fault-injection demo is harder to make
+legible in ten minutes; and nothing in the design changes either way, because the per-resume
+queue is what delivers both. The reliability claim survives intact as NFR-10 and its
+fault-injection test, and ADR-002 now argues that the second test is what keeps the first honest:
+throughput bought by dropping work is not throughput. The reconsideration is recorded in ADR-002's
+Notes.
+
+**ADR-003 — PostgreSQL as system of record, MongoDB for AI-derived documents.** The course
+requires two database types, and the ADR says plainly that the requirement forced the question —
+then gives an architectural reason that stands without it. Keeping identifying material physically
+separate from the counts the UC-4 dashboard is built on turns UC-5's *anonymise* action (FR-5.6)
+into "drop the documents, keep the rows": coarse and provable, rather than a field-by-field
+rewrite one missed column away from a compliance failure. PostgreSQL-with-`jsonb` is recorded as a
+genuinely strong rejected position rather than a straw man. The accepted cost is that no
+transaction spans the two stores, which is now named as the architectural cause of the *deletion
+pending* state FR-5.11 already required — a case where writing the ADR explained something the
+requirements had anticipated by instinct.
+
+**ADR-004 — all model access through one AI Service, managed API only, no fallback model.** The
+provider's training clause is treated as non-negotiable rather than as a preference: a provider
+that trains on submitted data absorbs every resume into a weight we cannot delete from, which
+would make UC-5's erasure promise false from the first batch screened. Self-hosting an open-weight
+model was the position the team was most reluctant to reject — it is the strongest privacy answer —
+and it lost on hardware we do not have and on materially weaker Thai-language quality, which would
+have converted a privacy win into a fairness loss in the one place the product must not fail. The
+AI Service is also where NFR-14's protected attributes are stripped before any prompt, so no
+caller can forget to, and it is NFR-17 made structural.
+
+**The hybrid was considered and rejected, which is worth recording because it looks like the
+obvious answer.** With NFR-10 promising that no accepted resume is lost, a local fallback model
+seems free. It is not: a fallback makes a candidate's score depend on which model happened to be
+healthy, so two candidates in the same batch could be ranked against each other on incomparable
+numbers — indefensible in a system whose proposition is a justified, comparable score. So NFR-10
+is read for exactly what it says: *every resume reaches a terminal state*, not *the AI is always
+available*. ADR-002 and ADR-004 are therefore a pair, and each names the other — running without a
+fallback is only acceptable because no queued work is lost. The consequence is stated in both
+records and belongs in the risk matrix: during a provider outage, screening produces no scores at
+all.
+
+**Aligned with the *Requirements* entry while rebasing.** ADR-002 had been drafted against the
+earlier PDF-or-DOCX intake and treated an unsupported format as a permanent processing failure; it
+now follows the PDF-only decision — a non-PDF file is rejected at upload (FR-2.1) and never reaches
+the queue, so the permanent-failure class is only a corrupt file or a scanned image with no text
+layer. NFR-02's 60-second abandon-and-retry bound is adopted as the definition of a transient
+failure, and NFR-04's two-second acknowledgement as the bound on the accept path.
+
+**Documents brought into line.** `PROPOSAL.md` gained a full *ADRs* section (summary plus the
+connective tissue between the four) and moved to Draft 3, with its status line finally reflecting
+that the requirements are done. `adr/INDEX.md` has the four rows, names which five of the eight
+candidates from the *Requirements* entry are now answered and by which record, and lists seven
+that remain — the three unanswered ones plus four the ADRs themselves surfaced: front-end
+framework, the UC-0 session/token mechanism and how workspace identity travels on internal calls,
+the scheduler shared by UC-4 and UC-5, and the repository structure. `CONTEXT.md` had four
+decided items removed — settled things move out of CONTEXT rather than being copied — and gained
+four new open *questions*, each load-bearing for a decision already made: the provider's current
+data-processing terms, Thai-language scoring quality, whether recruiters accept a
+progressively-filling batch, and whether the team can stand up a Kubernetes cluster early.
+`README.md` lists the four records, and `course/ASSIGNMENT.md`'s status table now reads *Done* for
+the ADR row.
+
+**Still outstanding:** the use case diagram needs redrawing in proper UML for submission; the
+FR/NFR lists must be inlined back into `PROPOSAL.md` before submission, as the *Requirements* entry
+notes; the load-test plan and the risk matrix, both of which ADR-002 and ADR-004 now feed; and the
+seven candidate decisions above.
+
+---
+
 ## 2026-09-11 — Requirements: reconciled, extracted, and rebuilt around quality attributes
 
 **UC-2 accepts PDF only.** Settled while reviewing draft functional requirements: DOCX was

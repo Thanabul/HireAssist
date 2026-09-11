@@ -119,4 +119,4 @@ positively why there are no `«include»` relationships.
 | Use Case Diagram | `PROPOSAL.md` | Draft in Mermaid; **needs redrawing in proper UML for submission** |
 | Functional Requirements | `PROPOSAL.md` → `FUNCTIONAL-REQUIREMENTS.md` | Done — 50, traced to use cases |
 | Non-functional Requirements | `PROPOSAL.md` → `NON-FUNCTIONAL-REQUIREMENTS.md` | Done — 17, grouped by quality attribute |
-| ADRs (≥3) | `../adr/` | **Not started** — template ready |
+| ADRs (≥3) | `../adr/` | Done — 4 recorded (ADR-001…004), summarised in `PROPOSAL.md` |

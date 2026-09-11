@@ -35,7 +35,7 @@ Term project for **Software Architecture**, Chulalongkorn University.
 | [docs/FUNCTIONAL-REQUIREMENTS.md](docs/FUNCTIONAL-REQUIREMENTS.md) | 50 functional requirements, traced to the use case each serves. |
 | [docs/NON-FUNCTIONAL-REQUIREMENTS.md](docs/NON-FUNCTIONAL-REQUIREMENTS.md) | 17 non-functional requirements, grouped by quality attribute. |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | Internal working notes — open questions, open decisions, glossary. Not for submission. |
-| [docs/adr/INDEX.md](docs/adr/INDEX.md) | Architecture Decision Records index. |
+| [docs/adr/INDEX.md](docs/adr/INDEX.md) | Architecture Decision Records index — four recorded so far. |
 | [docs/course/ASSIGNMENT.md](docs/course/ASSIGNMENT.md) | The assignment brief and submission guideline this proposal is written against. |
 | [docs/course/](docs/course/) | Course requirements and grading breakdown. |
 | [docs/reference/](docs/reference/) | The lecturer's ADR samples (one good, one deliberately poor). |
@@ -56,6 +56,20 @@ Term project for **Software Architecture**, Chulalongkorn University.
 
 One use case — talent-pool re-matching — is deliberately deferred and recorded as **D-1** in
 the proposal.
+
+---
+
+## Architecture decisions
+
+| ID | Decision |
+|---|---|
+| [ADR-001](docs/adr/ADR-001-service-decomposition.md) | Capability-aligned service decomposition behind an API gateway |
+| [ADR-002](docs/adr/ADR-002-async-screening-pipeline.md) | One queued message per resume for batch screening |
+| [ADR-003](docs/adr/ADR-003-polyglot-persistence.md) | PostgreSQL as system of record, MongoDB for AI-derived documents |
+| [ADR-004](docs/adr/ADR-004-llm-access.md) | All model access through one AI Service, on a managed API that does not train on our data |
+
+Summarised in [the proposal](docs/PROPOSAL.md#adrs); the full records carry the rejected
+alternatives, the negative implications, and the requirement each decision serves.
 
 ---
 

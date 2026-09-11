@@ -22,6 +22,10 @@ Assumptions currently stated in the proposal that we have not verified:
 - [ ] Realistic default retention period for UC-5 (6 / 12 / 24 months?).
 - [ ] All NFR figures are estimates — validate against measured load-test results and revise.
 - [ ] Model-provider rate limits may cap concurrency before worker count does (risk matrix item).
+- [ ] UC-6: how does an invited person set the password they sign in with (UC-0)? Nothing in the
+      use cases or requirements covers it.
+- [ ] UC-6: may the last Admin of a workspace be removed or demoted? If so, the workspace can no
+      longer be administered.
 
 Raised by the ADRs recorded on 2026-09-11, and load-bearing for them:
 
@@ -92,6 +96,7 @@ Service–Operations–Collaborators table.
 | Term | Meaning |
 |---|---|
 | **Workspace** | One company's isolated tenant. All data access is scoped to it. |
+| **Guest** | A person who has not signed in. On signing in they act as a Recruiter or an Admin, so *Recruiter* and *Admin* always mean a signed-in user. |
 | **Job Opening** | An open role, holding weighted screening criteria and an expected time-to-fill. |
 | **Criterion** | One requirement of a job opening, flagged must-have or nice-to-have, with a weight. |
 | **Resume** | The raw file a candidate submitted. |
@@ -120,10 +125,11 @@ Kept only as a record of where the concept came from. The authoritative descript
 | Reason for rejection (not sent to candidate) | An output field of UC-2, not a use case |
 | Talent Pool Re-matching | **D-1 — deferred** (see *Deferred Use Cases* in the proposal) |
 | PDPA Assistant | UC-5 (retention); consent gating remains an NFR |
-| First draft email for interview meeting | «extend» on UC-2 |
+| First draft email for interview meeting | Was an «extend» on UC-2; removed — no use case or requirement ever described it |
 | Notification for position open too long | Folded into UC-4 |
 | *(new)* Job creation from natural language | UC-1 |
 | *(new)* Candidate-specific interview questions | UC-3 |
+| *(new)* Authentication and workspace access, first drafted as one use case | Split in two after review: UC-0 (Guest signs in) and UC-6 (Admin manages access) |
 
 ---
 
@@ -133,6 +139,7 @@ Kept only as a record of where the concept came from. The authoritative descript
 |---|---|
 | `PROPOSAL.md` | **Source of truth** — the submission document |
 | `CONTEXT.md` | This file — open questions, open decisions, glossary |
+| `diagrams/` | Diagrams as code — PlantUML source plus the SVG rendered from it |
 | `adr/INDEX.md` | ADR index; `adr/TEMPLATE.md` is the format to use |
 | `course/` | Course minimum requirements & grading breakdown |
 | `reference/` | The lecturer's ADR samples (good and bad) |

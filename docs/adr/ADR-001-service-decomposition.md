@@ -51,7 +51,7 @@ HireAssist is five services and one gateway, aligned to capabilities:
 | Service | Owns | Serves |
 |---|---|---|
 | **API Gateway** | No domain data | Single public entry point. Terminates TLS, validates the session token, resolves workspace and role, applies rate limiting, routes to services. |
-| **Identity & Workspace Service** | Accounts, workspaces, memberships, roles, sessions | UC-0 |
+| **Identity & Workspace Service** | Accounts, workspaces, memberships, roles, sessions | UC-0, UC-6 |
 | **Hiring Service** | Job openings, criteria, screening batches, decisions, interview guides | UC-1, UC-2, UC-3 |
 | **Resume Processing Service** | Candidate profiles, parsed resume text | UC-2 (the per-resume work) |
 | **AI Service** | Prompts and the model credential — no domain data | UC-1, UC-2, UC-3 |
@@ -224,7 +224,7 @@ be in the right place in six months.
 
 ### Related requirements
 
-- **Use cases:** UC-0 (Identity & Workspace Service, gateway authorisation), UC-1/UC-2/UC-3
+- **Use cases:** UC-0 and UC-6 (Identity & Workspace Service, gateway authorisation), UC-1/UC-2/UC-3
   (Hiring Service, AI Service, Resume Processing Service), UC-4/UC-5 (Compliance & Insights
   Service). D-1 remains reachable because scoring is a service operation, not a step inside a
   batch.

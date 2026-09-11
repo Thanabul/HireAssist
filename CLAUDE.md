@@ -71,7 +71,10 @@ every one, every time:
 1. The use case's own section in `docs/PROPOSAL.md`
 2. The **overview table** at the top of *Scenario (use-case & description)*
 3. The **actors table** — actor descriptions name the use cases they participate in
-4. The **use case diagram** (Mermaid block) — nodes and associations
+4. The **use case diagram** — `docs/diagrams/use-case-diagram.puml` (PlantUML): use cases,
+   associations, relationships. Re-render `use-case-diagram.svg` from it and commit both together
+   (`plantuml -tsvg docs/diagrams/use-case-diagram.puml`); the proposal embeds the SVG, so a
+   stale image is a stale diagram
 5. The **relationships rationale** below the diagram, if any «include»/«extend» is affected
 6. **Cross-references inside other use cases** — grep for `UC-` and read each hit in context
 7. The use case list in `README.md`
@@ -82,7 +85,9 @@ Stale cross-references have been the single most common defect in this repo. Aft
 renumbering, grep for every `UC-` and `D-` reference and verify each one still points at what
 it claims.
 
-**Use case IDs:** UC-0 through UC-5 active, D-1 deferred. If a use case is removed, close the
+**Use case IDs:** UC-0 through UC-6 active, D-1 deferred. A new use case takes the next free
+number rather than being slotted in by topic — renumbering would renumber every `FR-<uc>.<n>`
+behind it, and requirement IDs are stable once written. If a use case is removed, close the
 numbering gap and re-check every reference. If one is deferred rather than dropped, it moves
 to the *Deferred Use Cases* section with a stated reason — deferral is a decision and gets
 recorded like one.

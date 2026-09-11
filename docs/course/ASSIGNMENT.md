@@ -101,9 +101,10 @@ compress these sections to save space.
 > description, use cases and diagram, the marker should understand **what the system does, who
 > uses it, and where its boundary lies.***
 
-**What this means for us:** this is why the diagram carries only one relationship — the
-conditional `«extend» Draft Interview Invitation Email` — and why the rationale below it states
-positively why there are no `«include»` relationships.
+**What this means for us:** this is why the diagram carries no `«include»` or `«extend»`
+relationships, and why the rationale below it states positively why there are none. A diagram
+element must also be backed by the use cases, which is why the `«extend» Draft Interview
+Invitation Email` was removed once it turned out no use case or requirement described it.
 
 ---
 
@@ -115,8 +116,8 @@ positively why there are no `«include»` relationships.
 | Group Members | `PROPOSAL.md` | Done |
 | Problem Description | `PROPOSAL.md` | Done |
 | Target Customers | `PROPOSAL.md` | Done |
-| Scenario (use-case & description) | `PROPOSAL.md` | Done — 6 use cases, above the minimum of 3 |
-| Use Case Diagram | `PROPOSAL.md` | Draft in Mermaid; **needs redrawing in proper UML for submission** |
+| Scenario (use-case & description) | `PROPOSAL.md` | Done — 7 use cases, above the minimum of 3 |
+| Use Case Diagram | `PROPOSAL.md` → `diagrams/use-case-diagram.puml` | Done — UML notation, PlantUML source with rendered SVG |
 | Functional Requirements | `PROPOSAL.md` → `FUNCTIONAL-REQUIREMENTS.md` | Done — 50, traced to use cases |
 | Non-functional Requirements | `PROPOSAL.md` → `NON-FUNCTIONAL-REQUIREMENTS.md` | Done — 17, grouped by quality attribute |
 | ADRs (≥3) | `../adr/` | Done — 4 recorded (ADR-001…004), summarised in `PROPOSAL.md` |

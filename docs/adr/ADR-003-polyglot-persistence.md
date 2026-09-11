@@ -48,7 +48,7 @@ one if it were.
 
 **PostgreSQL is the system of record.** It holds everything whose correctness is load-bearing:
 
-- workspaces, users, memberships and roles (UC-0)
+- workspaces and users (UC-0); memberships and roles (UC-6)
 - job openings and their weighted criteria (UC-1)
 - screening batches and the per-resume status of each entry (UC-2)
 - decisions — shortlist or reject, with the reason, the AI score and any human override (UC-2)
@@ -165,7 +165,7 @@ well add Redis later as a cache in front of the AI Service ([ADR-004](ADR-004-ll
 is not this decision and would not change this one.
 
 **PostgreSQL + Elasticsearch (4)** solves a problem we have deferred. Full-text ranking across the
-talent pool is D-1's requirement, and D-1 is parked. Nothing in UC-0 through UC-5 needs to search
+talent pool is D-1's requirement, and D-1 is parked. Nothing in UC-0 through UC-6 needs to search
 resume text — UC-2 scores a known set of files against known criteria. Adopting a search cluster
 now buys a capability nothing uses and costs memory on a cluster already carrying six services,
 two databases and a broker.
@@ -227,7 +227,7 @@ someone writes silently makes two services one.
 
 ### Related requirements
 
-- **Use cases:** UC-0 (memberships and roles), UC-1 (job openings and criteria), UC-2 (batches,
+- **Use cases:** UC-0 (users and sessions), UC-6 (memberships and roles), UC-1 (job openings and criteria), UC-2 (batches,
   profiles, scores, justifications, decisions and overrides), UC-3 (interview guides), UC-4
   (pipeline counters), UC-5 (consent, retention policy, audit log, and both expiry actions —
   delete and anonymise). D-1 would read profile documents from MongoDB and remains possible

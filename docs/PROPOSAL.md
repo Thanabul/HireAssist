@@ -3,7 +3,7 @@
 *Software Architecture — Term Project*
 
 > **Status:** Draft 3 — Project Description, Use Cases, Functional and Non-functional
-> Requirements, and the first four ADRs complete. Use case diagram still to be redrawn in UML.
+> Requirements, the use case diagram (UML, PlantUML source), and the first four ADRs complete.
 
 ---
 
@@ -187,49 +187,55 @@ The flow it supports end-to-end is:
 
 | ID | Use Case | Primary Actor | Solves (see *Consequences*) |
 |---|---|---|---|
-| UC-0 | Authenticate and manage workspace access | Admin / Recruiter | — (foundation) |
+| UC-0 | Authenticate into a workspace | Guest | — (foundation) |
 | UC-1 | Create a job opening from natural-language requirements | Recruiter | Slow time-to-screen |
 | UC-2 | Batch-screen resumes against a job opening | Recruiter | Slow time-to-screen, ghosted candidates, no decision trail |
 | UC-3 | Generate candidate-specific interview questions | Recruiter | Unprepared, generic interviews |
 | UC-4 | Monitor hiring pipeline and stale positions | Recruiter | Positions rot silently |
 | UC-5 | Enforce candidate data retention | System Scheduler / Admin | PDPA exposure |
+| UC-6 | Manage workspace access | Admin | — (foundation) |
 
 **Actors**
 
 | Actor | Description |
 |---|---|
-| **Recruiter** | The person who runs day-to-day hiring — an HR generalist, a founder, or a tech lead hiring for their own team. Primary actor of UC-1 through UC-4: creates job openings, screens resumes, prepares interview questions, and monitors the pipeline. |
-| **Admin** | The workspace owner. Has every Recruiter capability, and additionally manages members, roles and the data-retention policy (UC-0, UC-5). |
+| **Guest** | Anyone who has reached HireAssist but has not signed in. Primary actor of UC-0. On signing in they act as a **Recruiter** or an **Admin**, according to the role their workspace gave them — so wherever these documents name a Recruiter or an Admin, that person is already signed in. |
+| **Recruiter** | A signed-in workspace member who runs day-to-day hiring — an HR generalist, a founder, or a tech lead hiring for their own team. Primary actor of UC-1 through UC-4: creates job openings, screens resumes, prepares interview questions, and monitors the pipeline. |
+| **Admin** | The signed-in workspace owner. Has every Recruiter capability, and additionally configures the data-retention policy (UC-5) and manages members and roles (UC-6). |
 | **Candidate** | *Indirect actor.* Does not log in. Supplies a resume and a consent decision; is the subject of the data the system processes. |
 | **System Scheduler** | *Supporting actor.* Time-driven trigger that runs work no human initiates: staleness checks (UC-4) and retention enforcement (UC-5). |
 
 ---
 
-### UC-0 — Authenticate and manage workspace access
+### UC-0 — Authenticate into a workspace
 
-**Actors:** Admin, Recruiter
-**Goal:** Ensure only authorised members of a company access its candidate data, with permissions matching their role.
+**Actor:** Guest
+**Goal:** Prove who they are and enter their company's workspace with the permissions of their role.
 
 **Description**
 
 Every other use case operates on personal data, so all of them require an authenticated session;
-this use case is the precondition for the rest. An Admin or Recruiter signs in and receives a
-session scoped to one **workspace** (one company). An Admin invites members and assigns a role — **Admin**
-or **Recruiter** — which determines what they may do: a Recruiter creates job openings, screens
-resumes, prepares interview questions and monitors the pipeline, while an Admin does all of that and
-additionally manages members, roles and data-retention settings. All data access is scoped to the workspace, so no company
-can see another's candidates.
+this use case is the precondition for the rest. Its actor is a **Guest** — anyone who has reached
+HireAssist but has not yet signed in. The Guest signs in and receives a session scoped to one
+**workspace** (one company) and carrying their **role**. From that moment they act as a
+**Recruiter** or an **Admin**, according to that role, and every other use case is performed under
+that identity. This is why the other use cases name Recruiter and Admin as their actors and need not
+repeat the sign-in: being a Recruiter or an Admin already means being signed in.
+
+All data access is scoped to the workspace in the session, so no company can see another's
+candidates, and every request is checked against the role the session carries. Who may sign in to
+a workspace, and with which role, is decided by an Admin in UC-6.
 
 **Main flow**
-1. Admin or Recruiter signs in with their email address and password.
-2. System authenticates and issues a session token carrying workspace and role.
-3. Every subsequent request is authorised at the gateway against that token.
-4. Admin may invite, remove, or change the role of a workspace member.
+1. Guest signs in with their email address and password.
+2. System authenticates them and issues a session token carrying their workspace and role.
+3. The user now acts as a Recruiter or an Admin, according to that role.
+4. Every subsequent request is authorised at the gateway against that token.
 
 **Alternate flows**
-- *1a. Invalid credentials* — access denied and no session issued.
-- *3a. Token expired* — the Admin or Recruiter is prompted to re-authenticate.
-- *3b. Action exceeds the assigned role* — request rejected and the attempt recorded.
+- *1a. Invalid credentials* — access denied and no session issued; the user remains a Guest.
+- *4a. Token expired* — the session ends, and the user is prompted to sign in again as a Guest.
+- *4b. Action exceeds the assigned role* — request rejected and the attempt recorded.
 
 **Outcome:** Candidate data is accessible only to the right people in the right company, which is
 both a security requirement and a PDPA obligation.
@@ -497,60 +503,74 @@ liability — and no one has to remember to do it.
 
 ---
 
+### UC-6 — Manage workspace access
+
+**Actor:** Admin
+**Goal:** Control who belongs to the company's workspace and what each member is allowed to do.
+
+**Description**
+
+Access to candidate data is a PDPA obligation as much as a security concern, so deciding who has
+it belongs to one role. An Admin invites a person into the workspace and assigns them a role —
+**Admin** or **Recruiter** — removes a member who should no longer have access, or changes a
+member's role. The role decides what that person may do once they sign in (UC-0): a Recruiter
+creates job openings, screens resumes, prepares interview questions and monitors the pipeline,
+while an Admin does all of that and additionally configures data retention (UC-5) and manages
+access here.
+
+This is a separate use case from signing in because it has a different actor and a different
+goal. Every user authenticates, every session; managing access is an occasional administrative
+task that only an Admin performs. Folding the two together hid the Admin's distinct responsibility
+inside a use case that everyone participates in.
+
+**Main flow**
+1. Admin chooses to invite a person, remove a member, or change a member's role.
+2. For an invitation, Admin enters the person's email address and assigns a role — Admin or Recruiter.
+3. System applies the change to the workspace's membership.
+
+**Alternate flows**
+- *1a. A Recruiter attempts any of these actions* — the request is rejected and the attempt
+  recorded, as for any action exceeding the assigned role (UC-0, 4b).
+
+**Outcome:** Only the people the company chooses can reach its candidate data, each with exactly
+the permissions of their role.
+
+---
+
 ### Use Case Diagram
 
-```mermaid
-graph LR
-  AD(["Admin"])
-  R(["Recruiter"])
-  SCH(["System Scheduler"])
-  CD(["Candidate"])
+![HireAssist use case diagram](diagrams/use-case-diagram.svg)
 
-  subgraph HireAssist
-    UC0(["UC-0 Authenticate &<br/>Manage Workspace Access"])
-    UC1(["UC-1 Create Job Opening from<br/>Natural-Language Requirements"])
-    UC2(["UC-2 Batch-Screen Resumes<br/>Against a Job Opening"])
-    UC3(["UC-3 Generate Candidate-Specific<br/>Interview Questions"])
-    UC4(["UC-4 Monitor Pipeline &<br/>Stale Positions"])
-    UC5(["UC-5 Enforce Candidate<br/>Data Retention"])
-    EXT1(["Draft Interview<br/>Invitation Email"])
-  end
-
-  AD --- UC0
-  R --- UC0
-  R --- UC1
-  R --- UC2
-  R --- UC3
-  R --- UC4
-  SCH --- UC4
-  SCH --- UC5
-  AD --- UC5
-  CD -.-> UC2
-
-  EXT1 -.->|"«extend»"| UC2
-```
+*The diagram is maintained as code in
+**[diagrams/use-case-diagram.puml](diagrams/use-case-diagram.puml)** (PlantUML, standard UML use
+case notation). The image above is rendered from that file; edit the source and re-render rather
+than editing the image.*
 
 **Relationships used, and why**
 
-Only one relationship is used:
+No «include» or «extend» relationships are used. Each use case here is a coherent unit of
+behaviour that does not share a sub-behaviour with another, and factoring parts of a single use
+case out purely to populate the diagram would add notation without adding meaning. Sub-steps such
+as parsing a resume or scoring a profile are internal to UC-2 and are described in its flow, not
+promoted to use cases in their own right.
 
-- **«extend» Draft Interview Invitation Email** — optional behaviour after shortlisting. UC-2 is
-  complete without it; when the Recruiter chooses to invite a Candidate, the extension adds a
-  drafted invitation. It is modelled as an extension precisely because it is conditional — the
-  base use case succeeds whether or not it runs.
-
-No «include» relationships are used. Each use case here is a coherent unit of behaviour that does
-not share a sub-behaviour with another, and factoring parts of a single use case out purely to
-populate the diagram would add notation without adding meaning. Sub-steps such as parsing a resume
-or scoring a profile are internal to UC-2 and are described in its flow, not promoted to use cases
-in their own right.
+No optional behaviour is conditionally added to any use case either, so there is nothing for an
+«extend» to express. An earlier draft extended UC-2 with *Draft Interview Invitation Email*, but
+no use case described that behaviour and no requirement backed it, so it was removed rather than
+left in the diagram as a feature the rest of the proposal does not deliver.
 
 *Notes:*
-- *Authentication (UC-0) is a precondition of every other use case. It is shown as its own use
-  case rather than as five «include» arrows, which would add clutter without adding meaning.*
-- ***Admin** is a generalisation of **Recruiter**: an Admin can perform every Recruiter use case
-  and additionally manages members, roles and retention settings. Only the distinguishing
-  association (UC-0) is drawn, to keep the diagram readable.*
+- *Authentication (UC-0) is a precondition of every other use case, and its actor is the
+  **Guest**. A Guest who signs in acts as a **Recruiter** or an **Admin**, so those two actors
+  always denote a signed-in user. That is why UC-0 is associated with the Guest alone, rather than
+  drawn as six «include» arrows from every other use case, which would add clutter without adding
+  meaning.*
+- *No generalisation is drawn between **Guest** and **Recruiter** or **Admin**. Signing in changes
+  the role a person plays; a Recruiter is not a kind of Guest.*
+- ***Admin** specialises **Recruiter**, drawn as an actor generalisation arrow from Admin to
+  Recruiter: an Admin inherits every Recruiter association (UC-1 to UC-4). Only Admin's own
+  associations are drawn separately: configuring the retention policy (UC-5) and managing
+  workspace access (UC-6). Repeating the inherited ones would add lines without adding meaning.*
 - ***Candidate** is an indirect actor — they never log in. They supply the resume and the consent
   decision that UC-2 processes, shown as a dashed association.*
 
@@ -644,12 +664,13 @@ serves and numbered `FR-<use case>.<n>` for traceability.
 
 | Use case | Requirements | Count |
 |---|---|---|
-| UC-0 Authenticate and manage workspace access | FR-0.1 – FR-0.6 | 6 |
+| UC-0 Authenticate into a workspace | FR-0.1 – FR-0.6 (FR-0.5 withdrawn) | 5 |
 | UC-1 Create a job opening from natural-language requirements | FR-1.1 – FR-1.8 | 8 |
 | UC-2 Batch-screen resumes against a job opening | FR-2.1 – FR-2.12 | 12 |
 | UC-3 Generate candidate-specific interview questions | FR-3.1 – FR-3.5 | 5 |
 | UC-4 Monitor hiring pipeline and stale positions | FR-4.1 – FR-4.7 | 7 |
 | UC-5 Enforce candidate data retention | FR-5.1 – FR-5.12 | 12 |
+| UC-6 Manage workspace access | FR-6.1 | 1 |
 
 The deferred use case D-1 has no functional requirements.
 
@@ -692,7 +713,7 @@ external dependency the other three are built to survive.
 
 ### ADR-001 — Capability-aligned service decomposition behind an API gateway
 
-HireAssist is five services behind one gateway: **Identity & Workspace** (UC-0), **Hiring**
+HireAssist is five services behind one gateway: **Identity & Workspace** (UC-0, UC-6), **Hiring**
 (UC-1, UC-2, UC-3), **Resume Processing** (the per-resume work of UC-2), **AI** (every model
 call), and **Compliance & Insights** (UC-4, UC-5). The boundaries follow three properties that
 genuinely differ across the system — who triggers the work (a human, a queued message, or the

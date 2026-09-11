@@ -1,0 +1,67 @@
+@startuml use-case-diagram
+' HireAssist — Use Case Diagram (UML)
+'
+' This file is the source of the diagram. use-case-diagram.svg next to it is rendered from it
+' and embedded in docs/PROPOSAL.md. After editing, re-render and commit both files together:
+'
+'   plantuml -tsvg docs/diagrams/use-case-diagram.puml
+'   (or: java -jar plantuml.jar -tsvg docs/diagrams/use-case-diagram.puml)
+'
+' It must agree with the use cases in docs/PROPOSAL.md. When a use case changes, follow the
+' checklist in CLAUDE.md -> "When a use case changes". D-1 is deferred and deliberately absent.
+
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam actorBorderColor #333333
+skinparam actorBackgroundColor #FFFFFF
+skinparam usecaseBorderColor #333333
+skinparam usecaseBackgroundColor #FFFFFF
+skinparam rectangleBorderColor #333333
+skinparam rectangleBackgroundColor #FAFAFA
+skinparam arrowColor #333333
+
+' ── People who use the application (left) ─────────────────────────
+' A Guest has not signed in. On signing in (UC-0) they act as a Recruiter or an Admin,
+' according to their role, so Recruiter and Admin always denote a signed-in user.
+actor "Guest" as G
+actor "Recruiter" as R
+actor "Admin" as AD
+
+' ── Time-driven and indirect actors, who never sign in (right) ────
+actor "System Scheduler" as SCH
+actor "Candidate" as CD
+
+rectangle "HireAssist" {
+  usecase "UC-0\nAuthenticate into\na workspace" as UC0
+  usecase "UC-1\nCreate a job opening from\nnatural-language requirements" as UC1
+  usecase "UC-2\nBatch-screen resumes\nagainst a job opening" as UC2
+  usecase "UC-3\nGenerate candidate-specific\ninterview questions" as UC3
+  usecase "UC-4\nMonitor hiring pipeline\nand stale positions" as UC4
+  usecase "UC-5\nEnforce candidate\ndata retention" as UC5
+  usecase "UC-6\nManage workspace\naccess" as UC6
+}
+
+' Admin specialises Recruiter: it inherits every Recruiter association (UC-1 to UC-4)
+' and adds its own — configuring the retention policy (UC-5) and managing access (UC-6).
+R <|- AD
+
+R --- UC1
+R --- UC2
+R --- UC3
+R --- UC4
+AD --- UC5
+AD --- UC6
+
+' Signing in changes the role a person plays; it is not a kind-of relationship, so no
+' generalisation is drawn between Guest and Recruiter or Admin.
+G --- UC0
+
+UC4 --- SCH
+UC5 --- SCH
+
+' Candidate never signs in; it supplies the resume and consent decision UC-2 processes.
+UC2 .. CD
+
+@enduml

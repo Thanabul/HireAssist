@@ -217,17 +217,17 @@ this use case is the precondition for the rest. An Admin or Recruiter signs in a
 session scoped to one **workspace** (one company). An Admin invites members and assigns a role — **Admin**
 or **Recruiter** — which determines what they may do: a Recruiter creates job openings, screens
 resumes, prepares interview questions and monitors the pipeline, while an Admin does all of that and
-additionally manage members, roles and data-retention settings. All data access is scoped to the workspace, so no company
+additionally manages members, roles and data-retention settings. All data access is scoped to the workspace, so no company
 can see another's candidates.
 
 **Main flow**
-1. Admin or Recruiter signs in with their credentials.
+1. Admin or Recruiter signs in with their email address and password.
 2. System authenticates and issues a session token carrying workspace and role.
 3. Every subsequent request is authorised at the gateway against that token.
 4. Admin may invite, remove, or change the role of a workspace member.
 
 **Alternate flows**
-- *1a. Invalid credentials* — access denied; repeated failures are rate-limited.
+- *1a. Invalid credentials* — access denied and no session issued.
 - *3a. Token expired* — the Admin or Recruiter is prompted to re-authenticate.
 - *3b. Action exceeds the assigned role* — request rejected and the attempt recorded.
 
@@ -259,8 +259,11 @@ They can edit any criterion, change must-have vs nice-to-have, adjust weights, o
 the AI missed. They also set an expected time-to-fill, which UC-4 later uses to decide
 whether the position has gone stale.
 
-On confirmation the job opening is saved in an **open** state and becomes the target that
-UC-2 screens resumes against.
+On confirmation the job opening is saved in an **open** state, with the date it was opened
+recorded, and becomes the target that UC-2 screens resumes against. From there the Recruiter
+controls its lifecycle: an opening can be **paused** when hiring is put on hold — which also
+suspends the staleness alerts in UC-4, so those alerts stay meaningful — **resumed**, or
+**closed** once the role is filled or abandoned.
 
 **Main flow**
 1. Recruiter opens "New Job Opening" and pastes a free-text description (Thai or English).
@@ -268,7 +271,8 @@ UC-2 screens resumes against.
 3. System displays the proposed structure for review.
 4. Recruiter edits criteria, weights, and must-have / nice-to-have flags.
 5. Recruiter sets expected time-to-fill and confirms.
-6. System stores the job opening as **open** and publishes a *JobOpeningCreated* event.
+6. System stores the job opening as **open**, records the date it was opened, and publishes a *JobOpeningCreated* event.
+7. Recruiter may later pause, resume, or close the job opening.
 
 **Alternate flows**
 - *2a. Description too vague to extract criteria* — system says which parts it could not
@@ -292,7 +296,7 @@ in minutes from plain language, and traceable back to the words the role was des
 
 This is the use case that answers the core problem. The Recruiter selects an open position
 and drops in a batch of resumes at once — the files that accumulated in the inbox, exported
-from a job board, or dragged in as a folder (PDF / DOCX, Thai or English).
+from a job board, or dragged in as a folder — PDF, in Thai or English.
 
 The system does not make the Recruiter wait on a spinner. It accepts the batch, returns a
 batch identifier, and processes the resumes **asynchronously**: each resume is parsed into a
@@ -306,27 +310,31 @@ resume — *"6 years Go at two companies; Kafka used in production per the Wongn
 evidence of English-language client work."* A score with no reason is not actionable by HR,
 so explanation is a required output, not a feature.
 
+Where a must-have criterion is not met the candidate is marked **not qualified**, recording
+which criterion caused it. The ranked list can be filtered by minimum score or by an individual
+criterion, so a Recruiter can ask "who actually has production Go?" without re-reading anything.
 The Recruiter reviews the ranked list, overrides anything the AI got wrong, and marks
 candidates as **shortlisted** or **rejected**. Rejection captures the reason — the AI's
 justification, edited or replaced by the Recruiter. This reason is **internal**: it exists to
 give the Recruiter and Admin an audit trail and a consistency check, and is never automatically sent
 to the Candidate.
 
-Every screened candidate is added to the **talent pool** with their consent status recorded.
-The pool is retained and governed by UC-5, and is the foundation the deferred re-matching
-use case (D-1) will build on.
+Every screened candidate is added to the **talent pool**, recording their consent status, the
+date their personal data was collected, and the lawful basis for processing it — the facts UC-5
+needs to enforce retention later. The pool is retained and governed by UC-5, and is the
+foundation the deferred re-matching use case (D-1) will build on.
 
 **Main flow**
-1. Recruiter selects an open job opening and uploads a batch of resume files.
-2. System validates the files, creates a screening batch, and returns immediately with a batch ID.
+1. Recruiter selects an open job opening and uploads a batch of resume files in PDF format.
+2. System validates the files, rejecting any that are not PDF, creates a screening batch, and returns immediately with a batch ID.
 3. System parses each resume into a normalised candidate profile.
 4. System scores each profile against the job criteria and generates a justification.
-5. System streams results into the ranked shortlist view as they complete.
+5. System streams results into the ranked shortlist view as they complete, and notifies the Recruiter once the batch has finished processing.
 6. Recruiter reviews the ranking, adjusts any score or decision, and marks candidates shortlisted or rejected.
 7. System records each decision with its reason, and adds every candidate to the talent pool with consent status.
 
 **Alternate flows**
-- *3a. A file is unreadable* (corrupt, scanned image with no text layer, unsupported format) —
+- *3a. A file is unreadable* (corrupt, or a scanned image with no extractable text layer) —
   that resume is flagged for manual handling; the rest of the batch continues unaffected.
 - *4a. The AI scoring service is unavailable* — affected resumes are retried; if they still
   fail they are marked *needs manual review* rather than silently scored zero.
@@ -358,9 +366,10 @@ Go; your Go experience appears to be side projects — talk us through the large
 role-specific depth drawn from the job criteria. Each question is tagged with the criterion it
 tests and the resume evidence it came from, so the interviewer understands *why* it is being asked.
 
-The Recruiter can regenerate, remove, or add questions, then export or share the guide.
-After the interview the guide can be used to capture notes against each question, keeping
-evidence attached to the criterion it was meant to test.
+The Recruiter can regenerate, remove, or add questions. The guide is retained, so it can be
+reopened before the interview rather than regenerated, and after the interview it can be used
+to capture notes against each question, keeping evidence attached to the criterion it was meant
+to test.
 
 **Main flow**
 1. Recruiter opens a shortlisted candidate and requests an interview guide.
@@ -368,11 +377,9 @@ evidence attached to the criterion it was meant to test.
 3. System generates questions covering resume claims, must-have gaps, and role depth — each tagged with its source criterion.
 4. System presents the guide grouped by theme.
 5. Recruiter edits, removes, adds, or regenerates questions.
-6. Recruiter exports or shares the finalised guide with whoever is conducting the interview.
+6. System retains the guide for retrieval before the interview.
 
 **Alternate flows**
-- *3a. Thin resume, little to probe* — system falls back to criteria-driven questions and states
-  that resume-specific coverage is limited.
 - *5a. Recruiter wants a different emphasis* (more system design, more behavioural) — they
   regenerate with that instruction.
 
@@ -395,33 +402,33 @@ or spreadsheet raises a hand. The result is positions that quietly rot — never
 re-posted, never escalated.
 
 The dashboard gives the Recruiter one view across all open positions: for each, the funnel
-(**applied → screened → shortlisted → interviewing**), days open against the expected time-to-fill
-set in UC-1, screening throughput, and how many candidates are waiting on a decision. Conversion
-between stages exposes *where* a pipeline is failing — a role with 200 applicants and one
-shortlist has a criteria problem, not a supply problem.
+(**applied → screened → shortlisted → interviewing**) and days open against the expected
+time-to-fill set in UC-1. Seeing the two together is what makes a problem legible — a role with
+200 applicants, one shortlist and 60 days on the clock has a criteria problem, not a supply
+problem.
 
-Independently of anyone opening the dashboard, the System Scheduler evaluates open positions
-against their staleness rules and raises an alert when a position exceeds its expected
-time-to-fill, when a batch has sat unreviewed too long, or when a shortlisted candidate has had
-no decision for several days. Alerts are delivered to the Recruiter responsible for the
-position, and positions that trip a rule are highlighted on the dashboard. The point is that noticing does not depend on
-someone remembering to look.
+Independently of anyone opening the dashboard, the System Scheduler evaluates every open
+position against its staleness rule and raises an alert when the position has been open longer
+than its expected time-to-fill. Because that threshold is set per opening rather than once for
+the whole company, a niche senior role and a fast-moving junior one are each judged against
+their own realistic horizon. Alerts are delivered to the Recruiter responsible for the position,
+and flagged positions are highlighted on the dashboard. The point is that noticing does not
+depend on someone remembering to look.
 
 **Main flow**
 1. Recruiter opens the dashboard.
 2. System aggregates pipeline metrics across all open positions in the workspace.
-3. System displays per-position funnels, days open vs. expected time-to-fill, and stage conversion.
+3. System displays per-position funnels and days open vs. expected time-to-fill.
 4. System highlights positions currently flagged as stale or blocked.
 5. Recruiter drills into a position to see its candidates and act.
 
 **System-triggered flow**
-1. Scheduler periodically evaluates every open position against the staleness rules.
-2. Positions breaching a rule are flagged and an alert is published.
+1. Scheduler periodically evaluates every open position against its staleness rule.
+2. Positions breaching the rule are flagged and an alert is published.
 3. The Recruiter responsible for the position is notified.
-4. The flag is cleared when the position is filled, closed, or the blocking condition is resolved.
+4. The flag is cleared when the position is filled or closed, or the condition is resolved.
 
 **Alternate flows**
-- *3a. No open positions* — the dashboard shows an empty state with recent hiring history rather than a blank screen.
 - *4a. A position is deliberately paused* — it is excluded from staleness alerts while paused, so the alerts stay meaningful.
 
 **Outcome:** Hiring problems become visible while they can still be fixed, and a stalled position
@@ -458,8 +465,10 @@ The **System Scheduler** then evaluates the talent pool on a recurring basis. Re
 approaching expiry enter a **warning window**: the Recruiter is notified that a set of
 candidates will expire on a given date, which is the moment to act — re-obtain consent
 for a Candidate worth keeping, or simply let them go. Records that pass the expiry date
-are removed or anonymised according to the policy, and every action is written to an
-**audit log** recording what was erased, when, and under which policy. That log is the
+are removed or anonymised according to the policy — reaching every place the data is held, the
+profile, the stored resume file, screening results and their justification text, and generated
+interview guides, as one operation that leaves no partial record behind. Every action is written
+to an **audit log** recording what was erased, when, and under which policy. That log is the
 evidence the company can show a regulator, and it deliberately contains no personal data
 itself.
 
@@ -629,139 +638,44 @@ and lawfully, turning a dead archive into a live sourcing channel.
 
 ## Functional Requirements
 
-Requirements are grouped by the use case they serve. Every requirement is written
-as a single verifiable statement so that it can be referenced from an ADR and from
-the Service–Operations–Collaborators table in Deliverable #2.
+The full set of 50 functional requirements is maintained in
+**[FUNCTIONAL-REQUIREMENTS.md](FUNCTIONAL-REQUIREMENTS.md)**, grouped by the use case each one
+serves and numbered `FR-<use case>.<n>` for traceability.
 
-### UC-0 — Authenticate and manage workspace access
+| Use case | Requirements | Count |
+|---|---|---|
+| UC-0 Authenticate and manage workspace access | FR-0.1 – FR-0.6 | 6 |
+| UC-1 Create a job opening from natural-language requirements | FR-1.1 – FR-1.8 | 8 |
+| UC-2 Batch-screen resumes against a job opening | FR-2.1 – FR-2.12 | 12 |
+| UC-3 Generate candidate-specific interview questions | FR-3.1 – FR-3.5 | 5 |
+| UC-4 Monitor hiring pipeline and stale positions | FR-4.1 – FR-4.7 | 7 |
+| UC-5 Enforce candidate data retention | FR-5.1 – FR-5.12 | 12 |
 
-| ID | Requirement |
-|---|---|
-| FR-01 | The system shall allow a user to sign in to the workspace of their organisation. |
-| FR-02 | The system shall assign every user exactly one role within a workspace: Administrator or Recruiter. |
-| FR-03 | The system shall allow an Administrator to invite a user, deactivate a user, and change a user's role within their own workspace. |
-| FR-04 | The system shall confine every job opening, candidate profile, screening result, and question set to the workspace that owns it. |
-
-### UC-1 — Create a job opening from natural-language requirements
-
-| ID | Requirement |
-|---|---|
-| FR-05 | The system shall allow a recruiter to create a job opening by entering the position requirements as free-form text in Thai or in English. |
-| FR-06 | The system shall derive a structured set of screening criteria from that text, covering required skills, minimum years of experience, education, and language ability. |
-| FR-07 | The system shall present the derived criteria to the recruiter for review, and shall allow each criterion to be added, edited, or removed before the job opening is saved. |
-| FR-08 | The system shall allow a recruiter to mark a criterion as mandatory and to assign a weight to each criterion. |
-| FR-09 | The system shall record the set of criteria that was in effect at the time a job opening was saved, so that a past screening result can be explained against the criteria actually used. |
-| FR-10 | The system shall allow a recruiter to close a job opening. |
-
-### UC-2 — Batch-screen resumes against a job opening
-
-| ID | Requirement |
-|---|---|
-| FR-11 | The system shall allow a recruiter to upload multiple resume files in PDF or DOCX format as a single batch against a selected job opening. |
-| FR-12 | The system shall extract the candidate's name, contact details, education, work experience, and skills from each uploaded resume. |
-| FR-13 | The system shall store every extracted candidate profile so that it can be reused for other job openings within the same workspace. |
-| FR-14 | The system shall compute a match score between 0 and 100 for each candidate against the screening criteria of the selected job opening. |
-| FR-15 | The system shall produce a written justification for every match score, stating which criteria the candidate met and which the candidate did not meet. |
-| FR-16 | The system shall mark a candidate as not qualified when a criterion marked mandatory is not met, and shall record which criterion caused it. |
-| FR-17 | The system shall present the screened candidates as a list ranked by match score, filterable by minimum score and by an individual criterion. |
-| FR-18 | The system shall report every resume that could not be parsed, together with the reason, so that the recruiter can handle it manually. |
-| FR-19 | The system shall notify the recruiter when a batch screening run has finished. |
-
-### UC-3 — Generate candidate-specific interview questions
-
-| ID | Requirement |
-|---|---|
-| FR-20 | The system shall allow a recruiter to request a set of interview questions for a selected candidate and job opening. |
-| FR-21 | The system shall derive the questions from the candidate's profile and from the screening criteria that the candidate did not clearly meet, and shall group each question under the criterion it is intended to probe. |
-| FR-22 | The system shall allow a recruiter to regenerate the set or to edit an individual question. |
-| FR-23 | The system shall store the question set so that it can be retrieved again before the interview. |
-
-### UC-4 — Monitor hiring pipeline and stale positions
-
-| ID | Requirement |
-|---|---|
-| FR-24 | The system shall display, for each open job opening, the number of candidates screened, the number still awaiting review, and the date of the most recent screening run. |
-| FR-25 | The system shall record the date on which each job opening was opened. |
-| FR-26 | The system shall allow an Administrator to configure the number of days after which an open job opening is treated as stale. |
-| FR-27 | The system shall identify job openings that have exceeded the stale threshold and notify the recruiter responsible for each of them. |
-
-### UC-5 — Enforce candidate data retention
-
-| ID | Requirement |
-|---|---|
-| FR-28 | The system shall record, for every candidate profile, the date on which the personal data was collected and the lawful basis for processing it. |
-| FR-29 | The system shall allow an Administrator to configure the retention period for candidate personal data within their workspace. |
-| FR-30 | The system shall identify candidate profiles whose retention period has expired and delete or anonymise them without manual intervention. |
-| FR-31 | The system shall allow an Administrator to delete or anonymise a specific candidate's personal data on request. |
-| FR-32 | The system shall remove or anonymise a candidate's personal data everywhere it is held — profile, stored resume file, screening result, justification text, and generated question set — as a single operation, leaving no partial record behind. |
-| FR-33 | The system shall write an audit record for every retention action, stating what was removed, when it was removed, and on what basis. |
-
----
+The deferred use case D-1 has no functional requirements.
 
 ## Non-functional Requirements
 
-### Operational
+The full set of 17 non-functional requirements is maintained in
+**[NON-FUNCTIONAL-REQUIREMENTS.md](NON-FUNCTIONAL-REQUIREMENTS.md)**, grouped by the quality
+attribute each one serves and paired with how it is verified.
 
-| ID | Requirement |
-|---|---|
-| NFR-01 | The system shall be accessible through current versions of Chrome, Safari, and Edge on desktop. |
-| NFR-02 | The system shall be deployed on cloud infrastructure. |
-| NFR-03 | The system shall be available at least 99% of the time during working hours, defined as Monday to Friday, 08:00–20:00 ICT. |
-| NFR-04 | The system shall accept resume files of up to 10 MB each and batches of up to 200 files. |
+| Quality attribute | Requirements | Concern |
+|---|---|---|
+| Performance | NFR-01 – NFR-05 | Parse, score, list and generate within stated bounds |
+| **Scalability** | NFR-06 – NFR-08 | Batch throughput under an applicant burst — **the quality attribute this project demonstrates** |
+| Availability & Reliability | NFR-09, NFR-10 | Uptime, and never losing an accepted resume |
+| Security | NFR-11, NFR-12 | Encryption in transit and at rest; access audit |
+| Privacy & Regulatory Compliance | NFR-13, NFR-14 | Erasure within 30 days; protected attributes excluded from scoring |
+| Transparency | NFR-15 | Every score shows the per-criterion evidence behind it |
+| Usability & Localisation | NFR-16 | Thai and English, desktop and tablet |
+| Modifiability | NFR-17 | Scoring model and prompt change within one service boundary |
 
-### Performance
+All figures are initial targets that give the architecture direction, to be revised once load
+testing produces measured results. PDPA compliance is not stated as a single requirement because
+it is not verifiable as one; it is the combined effect of NFR-12 to NFR-14 and FR-5.1 to FR-5.12.
 
-| ID | Requirement |
-|---|---|
-| NFR-05 | The system shall parse and score a single resume within 5 seconds. |
-| NFR-06 | The system shall complete a batch screening of 100 resumes within 10 minutes. |
-| NFR-07 | The system shall return the ranked candidate list within 2 seconds for a job opening holding up to 1,000 screened candidates. |
-| NFR-08 | The system shall generate a set of interview questions within 15 seconds. |
-| NFR-09 | The system shall support at least 20 concurrent recruiters without exceeding the response times stated above. |
-
-### Security
-
-| ID | Requirement |
-|---|---|
-| NFR-10 | The system shall encrypt candidate personal data at rest, and shall transmit all data over TLS 1.2 or higher. |
-| NFR-11 | The system shall enforce role-based access control with the roles Administrator and Recruiter. |
-| NFR-12 | The system shall prevent any user from reading data belonging to a workspace other than their own. |
-| NFR-13 | The system shall record an audit log of every read and every export of candidate personal data, and shall retain that log for at least one year. |
-| NFR-14 | The system shall keep a candidate's match score and the justification for it visible only to authorised staff of the hiring organisation; neither shall be disclosed to the candidate. |
-
-### Cultural and Legal
-
-| ID | Requirement |
-|---|---|
-| NFR-15 | The system shall comply with Thailand's Personal Data Protection Act B.E. 2562 (2019). |
-| NFR-16 | The system shall comply with Thailand's Computer Crime Act B.E. 2560 (2017). |
-| NFR-17 | The system shall complete a valid request to delete a candidate's personal data within 30 days of receiving it. |
-| NFR-18 | The system shall process resumes written in Thai and in English. |
-| NFR-19 | The system shall exclude gender, age, marital status, religion, nationality, and photograph from the data used to compute a match score. |
-
-### Usability
-
-| ID | Requirement |
-|---|---|
-| NFR-20 | The system shall provide a responsive user interface usable on desktop and tablet. |
-| NFR-21 | A recruiter shall be able to complete a first batch screening without prior training, guided by the interface alone. |
-| NFR-22 | The system shall display, for every match score, the criteria that produced it, so that a recruiter can verify a result without reading the whole resume. |
-| NFR-23 | The system shall provide the user interface in Thai and in English. |
-
----
-
-### Architecturally significant requirements
-
-The following non-functional requirements are expected to drive an architectural
-decision and should each be answered by an ADR.
-
-| NFR | Question it forces |
-|---|---|
-| NFR-06, NFR-09 | Invoking a language model once per resume is slow and costly at 100+ resumes. Does screening need a tiered pipeline — a cheap deterministic filter first, the model only on the shortlist? |
-| NFR-15, NFR-17 | Resumes are personal data under the PDPA. May they be sent to a third-party model provider, or must the model be self-hosted? |
-| NFR-14, NFR-19 | A score must never reach the candidate, and protected attributes must not influence it. Where is that enforced, and how is it proved during an audit? |
-| NFR-22 | A score must be explainable. This rules out an opaque scorer and requires per-criterion evidence to be persisted alongside the score. |
-| FR-32 | Deleting one candidate must reach every place the data is held. Which component owns that cascade, and how does it stay correct as new components are added? |
+Five groups of these are architecturally significant and are each answered by an ADR — listed at
+the end of [NON-FUNCTIONAL-REQUIREMENTS.md](NON-FUNCTIONAL-REQUIREMENTS.md).
 
 ## ADRs
 

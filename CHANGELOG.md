@@ -12,6 +12,167 @@ and why something changed.
 
 ---
 
+## 2026-09-11 — Requirements: reconciled, extracted, and rebuilt around quality attributes
+
+**UC-2 accepts PDF only.** Settled while reviewing draft functional requirements: DOCX was
+dropped from the accepted formats, so the use case now states PDF in its description, requires
+the Recruiter to upload PDFs, and has the System reject non-PDF files at validation.
+
+Unsupported formats moved out of the *unreadable file* alternate flow, since they are now
+rejected up front rather than failing during parsing. That flow keeps the two cases that
+survive validation — a corrupt file, and a scanned image with no extractable text layer — so
+the scanned-resume problem is still handled without needing a second file format.
+
+**Functional requirements written up and moved out of the proposal.** They now live in
+`docs/FUNCTIONAL-REQUIREMENTS.md` — 50 requirements numbered `FR-<use case>.<n>` so each traces
+to the use case it serves and so adding one never renumbers the rest. `PROPOSAL.md` keeps a
+pointer and a per-use-case summary table. The deferred use case D-1 has no requirements.
+
+**Two independent drafts were reconciled.** A teammate had filled in flat-numbered `FR-01`–`FR-33`
+directly in `PROPOSAL.md` while a per-use-case set was being reviewed here. The reviewed set was
+taken as the base, and six requirements from the other draft were absorbed because they covered
+behaviour the base set missed — five merged into existing requirements rather than added
+alongside them:
+
+- *not qualified* outcome when a must-have criterion is unmet → merged into FR-2.5
+- filtering the ranked list by minimum score and by criterion → merged into FR-2.6
+- collection date and lawful basis for processing → merged into FR-2.11
+- retaining a generated interview guide for later retrieval → merged into FR-3.1
+- erasure across every place the data is held, as a single operation leaving no partial record
+  → merged into FR-5.5
+- batch-completion notification → added as FR-2.12, the only one with no natural home
+
+Two requirements from that draft were deliberately not carried over: a snapshot of the criteria
+in effect when a job opening was saved, and an explicit 0–100 score range.
+
+**Conflicts resolved in favour of the reviewed set:** PDF-only intake (the other draft allowed
+DOCX), and pause/resume/close lifecycle rather than close alone.
+
+**Staleness is measured per job opening, not per workspace.** The two drafts disagreed: a
+per-job *expected time-to-fill* set by the Recruiter at creation (FR-1.6), versus a single
+workspace-wide threshold in days configured by an Admin. We chose per job.
+
+The deciding argument is that one global threshold cannot serve roles with genuinely different
+hiring horizons — set low enough to catch a stalling support role and it floods alerts for a
+niche senior role; set high enough for the niche role and easy roles rot unnoticed, which is
+the exact problem UC-4 exists to solve. Per job also keeps the rule local: the threshold is a
+field on the job opening, so Insights & Notifications can evaluate staleness from the
+`JobOpeningCreated` event it already consumes, instead of reading workspace configuration owned
+by another service.
+
+The cost accepted is that the Recruiter must supply an estimate on every job opening, and a
+Recruiter who does not know the answer will guess. A workspace default with a per-job override
+was considered and rejected as more machinery than this project needs.
+
+This surfaced a gap in both drafts: nothing recorded *when* an opening was opened, which
+days-open depends on. Merged into FR-1.7.
+
+**Use cases and requirements reconciled.** A full cross-check was run in both directions — every
+use case behaviour against a requirement, and every requirement against use case prose — and
+thirteen discrepancies were fixed in `PROPOSAL.md`. None changed what the system does; they
+removed statements the requirements no longer backed, or described behaviour the requirements
+had gained.
+
+Behaviour the use cases promised but no requirement backed, now removed from the prose:
+
+- rate limiting of failed sign-ins (UC-0)
+- exporting or sharing an interview guide (UC-3) — the guide is viewed in the application
+- the "resume-specific coverage is limited" fallback for a thin resume (UC-3)
+- stage-to-stage conversion on the dashboard (UC-4)
+- staleness alerts for an unreviewed batch and for an undecided shortlisted candidate (UC-4),
+  leaving expected time-to-fill as the single rule
+- the empty-state dashboard when no positions are open (UC-4)
+
+Behaviour the requirements gained but the use cases never described, now written into the prose:
+
+- pause, resume and close a job opening, and the date an opening was opened (UC-1). UC-4's
+  alternate flow already assumed pausing existed, so this closed a dangling reference.
+- marking a candidate *not qualified* when a must-have criterion is unmet, and filtering the
+  ranked list by minimum score or by criterion (UC-2)
+- recording the collection date and lawful basis alongside consent status (UC-2)
+- notifying the Recruiter when a batch finishes processing (UC-2)
+- retaining a generated interview guide for retrieval before the interview (UC-3)
+- erasure reaching profile, resume file, screening results, justification text and interview
+  guides as one operation leaving no partial record (UC-5)
+
+UC-4's description was also rewritten to explain *why* the threshold is per opening rather than
+per workspace, so the decision is visible to a reader who never opens the changelog.
+
+**Non-functional requirements rewritten around quality attributes**, and moved to
+`docs/NON-FUNCTIONAL-REQUIREMENTS.md`. The teammate draft had 23 grouped by loose category
+(Operational, Performance, Security, Cultural and Legal, Usability); the replacement has 17
+grouped by the quality attribute each serves, every one paired with how it is verified. The
+brief was to keep the set small and give the architecture direction rather than aim for
+completeness.
+
+Cut, with reasons:
+
+- *Duplicates of functional requirements* — role-based access control, workspace isolation, and
+  the rule that a score is never disclosed to the candidate. All three are already FR-0.4,
+  FR-0.3 and FR-2.10. A requirement stated twice eventually gets stated two different ways.
+- *Not a requirement* — "shall be deployed on cloud infrastructure" is an architectural
+  decision and belongs in an ADR.
+- *Unverifiable* — "shall comply with the PDPA". Compliance is not testable as a statement; it
+  is the combined effect of NFR-12 to NFR-14 and FR-5.1 to FR-5.12, and the document now says
+  so in prose instead of pretending otherwise.
+- *No architectural consequence* — the Computer Crime Act, already covered by NFR-11 and NFR-12.
+- *Untestable as written* — "usable without prior training". A real goal, but with no
+  measurement attached it is decoration.
+
+Added:
+
+- **NFR-07**, throughput rising proportionally with worker count. This is the measurement for
+  the course's "demonstrate one quality attribute" requirement, and it reuses the load test
+  already owed.
+- **NFR-10**, no accepted resume is ever lost. Once a batch is acknowledged before processing,
+  a Recruiter cannot distinguish a lost resume from a slow one, so the guarantee has to be
+  explicit.
+- **NFR-17**, scoring model and prompt changeable within one service boundary — the thing that
+  will change most often in this system.
+
+**Scoring latency corrected.** The first draft required parse-and-score within 5 seconds, a
+figure that only makes sense for deterministic parsing. Scoring is a language-model call whose
+latency is dominated by generated output — realistically 8–15 seconds, longer at the tail. The
+requirement was split: parsing within 5 seconds (NFR-01), scoring within 20 seconds with a
+60-second abandon-and-retry bound (NFR-02). That bound also gives FR-2.7 a definition of
+"failed" that it previously lacked.
+
+The batch figure was then checked against it rather than left to contradict it: 100 resumes at
+roughly 12 seconds each is about 20 minutes sequentially, so the 10-minute target holds only
+with concurrency. NFR-06 now states the worker count it assumes, which makes NFR-07 the
+mechanism that delivers it instead of an unrelated claim.
+
+**Scalability chosen as the demonstrated quality attribute**, closing an open decision in
+`CONTEXT.md`. It is measurable, demonstrable in a live demo, and shares a load test with an
+existing requirement.
+
+**ADR candidates now derived from requirements.** `docs/adr/INDEX.md` lists eight, each with the
+requirement that forces it, rather than the loose list of topics it held before.
+
+**Changelog reminder automated.** A `PostToolUse` hook (`.claude/settings.json` plus
+`.claude/hooks/changelog-reminder.py`) now fires whenever any file under `docs/` is modified
+and injects a reminder to record the change here. Committed at project level so it applies to
+the whole team, not one machine.
+
+It decides by **file modification time**, not by inspecting the tool's arguments. The first
+attempt matched the string `docs/` in the tool input, which was wrong in both directions: it
+would have fired on a read such as `sed -n '1,50p' docs/PROPOSAL.md`, which mentions the path
+but changes nothing, and it depended on knowing which argument of which tool carries a path.
+Checking what actually changed on disk catches an edit however it was made — the Edit and Write
+tools, a scripted Bash heredoc, `sed -i`, a redirect — and never fires for a read.
+
+It stays silent when `CHANGELOG.md` was part of the same change, and remembers the last change
+it reported so it does not repeat itself for the same edit.
+
+`.gitignore` previously excluded all of `.claude/`, which would have kept the hook on one
+machine. It now shares `.claude/settings.json` and `.claude/hooks/` with the team while still
+ignoring `.claude/settings.local.json` and anything else personal.
+
+**Still outstanding.** No ADRs are written yet. The use case diagram still needs redrawing in
+proper UML for submission.
+
+---
+
 ## 2026-09-10 — ADR template rebuilt, and external context brought into the repo
 
 *(After the initial commit `b4b9a3c`.)*

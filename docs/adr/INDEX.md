@@ -19,16 +19,20 @@ The course requires **at least 3 ADRs** as part of the project proposal submissi
 
 ## Candidate decisions
 
-Open decisions identified but not yet written up. Tracked in detail in
+Identified from the architecturally significant requirements in
+[../NON-FUNCTIONAL-REQUIREMENTS.md](../NON-FUNCTIONAL-REQUIREMENTS.md) and from open questions in
 [../CONTEXT.md](../CONTEXT.md).
 
-- Resume ingestion channel — batch upload only, or an automated email/webhook adapter
-- LLM provider and placement, cost bounding, and behaviour when the model is unavailable
-- Service decomposition, and which boundary uses REST vs. gRPC vs. the message broker
-- Datastore split — which RDBMS, which NoSQL, and what belongs in each
-- Async processing model for UC-2 screening batches — queue topology, retry, partial failure
-- Scheduler design shared by UC-4 (staleness checks) and UC-5 (retention enforcement)
-- Which software quality attribute the project demonstrates for the course requirement
+| Decision | Forced by |
+|---|---|
+| Tiered screening pipeline — deterministic filter before the model? | NFR-02, NFR-06, NFR-08 |
+| Third-party model provider vs. self-hosted model | NFR-13, NFR-14 |
+| Queue topology, worker scaling and delivery guarantee for batch screening | NFR-07, NFR-10 |
+| Where the scorer boundary is drawn, and how per-criterion evidence is persisted | NFR-15, NFR-17 |
+| Erasure cascade — orchestration or choreography | FR-5.5, FR-5.11 |
+| Service discovery mechanism | Course requirement |
+| Datastore split — which RDBMS, which NoSQL, what belongs in each | Course requirement |
+| Resume ingestion channel — upload only, or an automated adapter | Open question |
 
 ---
 

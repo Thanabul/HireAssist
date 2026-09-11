@@ -20,6 +20,8 @@ Assumptions currently stated in the proposal that we have not verified:
 - [ ] Which resume formats must we parse — PDF, DOCX, scanned images? Thai + English mix?
 - [ ] Typical expected time-to-fill, to make UC-4's staleness thresholds realistic.
 - [ ] Realistic default retention period for UC-5 (6 / 12 / 24 months?).
+- [ ] All NFR figures are estimates — validate against measured load-test results and revise.
+- [ ] Model-provider rate limits may cap concurrency before worker count does (risk matrix item).
 
 ---
 
@@ -38,28 +40,20 @@ and the Service–Operations–Collaborators table are produced.
 - [ ] **Datastores.** Which RDBMS, which NoSQL, and what belongs in each.
 - [ ] **Async processing model** for UC-2 batches — queue topology, retry, partial failure.
 - [ ] **Scheduler design** shared by UC-4 (staleness) and UC-5 (retention).
-- [ ] **Which quality attribute** we demonstrate for the course requirement.
+- [x] ~~Which quality attribute we demonstrate~~ → **Scalability** (NFR-07)
 - [ ] ~~Re-match trigger (event vs. scheduled)~~ — moot while D-1 is deferred.
 
 ---
 
-## 3. NFR seed material
+## 3. Requirements
 
-Raw input for the proposal's *Non-functional Requirements* section, which is not yet written.
-**Delete this section once those requirements are in `PROPOSAL.md`.**
+Written up and moved out of this file:
 
-Course-imposed (see [course/REQUIREMENTS.md](course/REQUIREMENTS.md)): microservices with REST + gRPC +
-message broker, API gateway, service discovery, RDBMS + NoSQL, two load tests, risk matrix, and
-one demonstrated quality attribute.
+- **Functional** — `FUNCTIONAL-REQUIREMENTS.md` (50, numbered by use case)
+- **Non-functional** — `NON-FUNCTIONAL-REQUIREMENTS.md` (17, grouped by quality attribute)
 
-Domain-imposed:
-- **Privacy / PDPA** — resumes are personal data; consent and retention are first-class.
-- **Explainability** — a score without a stated reason is not usable by a recruiter.
-- **Cost** — target customers are price-sensitive; LLM calls must be bounded and cached.
-- **Throughput / latency** — a batch must be accepted immediately and processed concurrently.
-- **Thai + English** language support throughout.
-- **Bias / fairness** — screening must not discriminate; the human stays in the loop.
-- **Auditability** — every AI score, human override and erasure must be reconstructable.
+The quality attribute demonstrated for the course requirement is **Scalability**, measured as
+batch screening throughput against worker count (NFR-07).
 
 ---
 

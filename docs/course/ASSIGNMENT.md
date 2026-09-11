@@ -23,6 +23,11 @@ in class.
 
 `docs/PROPOSAL.md` uses these exact headings, in this order. Do not rename or reorder them.
 
+The Functional and Non-functional Requirements sections hold a summary and point to
+`FUNCTIONAL-REQUIREMENTS.md` and `NON-FUNCTIONAL-REQUIREMENTS.md`, which carry the full lists.
+**Before submitting, inline those two lists back into the proposal** — the brief asks for one
+document, and a marker should not have to follow links.
+
 The "sample in Supplementary Materials" is in [`../reference/`](../reference/) —
 `adr-sample-good.pdf` and `adr-sample-bad.pdf`.
 
@@ -112,6 +117,6 @@ positively why there are no `«include»` relationships.
 | Target Customers | `PROPOSAL.md` | Done |
 | Scenario (use-case & description) | `PROPOSAL.md` | Done — 6 use cases, above the minimum of 3 |
 | Use Case Diagram | `PROPOSAL.md` | Draft in Mermaid; **needs redrawing in proper UML for submission** |
-| Functional Requirements | `PROPOSAL.md` | **Not started** |
-| Non-functional Requirements | `PROPOSAL.md` | **Not started** |
+| Functional Requirements | `PROPOSAL.md` → `FUNCTIONAL-REQUIREMENTS.md` | Done — 50, traced to use cases |
+| Non-functional Requirements | `PROPOSAL.md` → `NON-FUNCTIONAL-REQUIREMENTS.md` | Done — 17, grouped by quality attribute |
 | ADRs (≥3) | `../adr/` | **Not started** — template ready |

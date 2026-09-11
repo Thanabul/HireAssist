@@ -38,6 +38,13 @@ reasonably ask *"why did we do that?"*, the answer belongs in the changelog.
   an earlier one, say so and name the entry it supersedes — do not go back and amend it.
 - Note what is still outstanding at the end of an entry.
 
+A `PostToolUse` hook (`.claude/settings.json` → `.claude/hooks/changelog-reminder.py`) injects
+this reminder automatically whenever any file under `docs/` is actually modified. It detects
+the change by modification time rather than by reading the tool's arguments, so it catches an
+edit however it was made and stays silent when a file was only read. It is a safety net, not
+the rule — the obligation is this section, and the hook only fires inside a Claude Code session
+that has it loaded.
+
 ---
 
 ## Where things live

@@ -13,7 +13,20 @@ The course requires **at least 3 ADRs** as part of the project proposal submissi
 
 | ID | Decision | Status | Date |
 |---|---|---|---|
-| — | _No ADRs recorded yet._ | — | — |
+| [ADR-001](ADR-001-service-decomposition.md) | Capability-aligned service decomposition behind an API gateway | Accepted | 2026-09-11 |
+| [ADR-002](ADR-002-async-screening-pipeline.md) | One queued message per resume for batch screening | Accepted | 2026-09-11 |
+| [ADR-003](ADR-003-polyglot-persistence.md) | PostgreSQL as system of record, MongoDB for AI-derived documents | Accepted | 2026-09-11 |
+| [ADR-004](ADR-004-llm-access.md) | All model access through one AI Service, on a managed API that does not train on our data | Accepted | 2026-09-11 |
+
+The four are best read in order: ADR-001 draws the boundaries, ADR-002 fills in the busiest one,
+ADR-003 says what each side stores, and ADR-004 fills in the dependency the others are built to
+survive. ADR-002 and ADR-004 are a deliberate pair — running without a fallback model is only
+acceptable because no queued work is lost (NFR-10).
+
+Of the eight candidates listed below on 2026-09-11, five are answered by these records: the
+model-provider question by ADR-004; queue topology, worker scaling and delivery guarantee by
+ADR-002; the scorer boundary by ADR-001 and ADR-004, with per-criterion evidence persistence by
+ADR-003; service discovery by ADR-001; and the datastore split by ADR-003.
 
 ---
 
@@ -26,13 +39,12 @@ Identified from the architecturally significant requirements in
 | Decision | Forced by |
 |---|---|
 | Tiered screening pipeline — deterministic filter before the model? | NFR-02, NFR-06, NFR-08 |
-| Third-party model provider vs. self-hosted model | NFR-13, NFR-14 |
-| Queue topology, worker scaling and delivery guarantee for batch screening | NFR-07, NFR-10 |
-| Where the scorer boundary is drawn, and how per-criterion evidence is persisted | NFR-15, NFR-17 |
-| Erasure cascade — orchestration or choreography | FR-5.5, FR-5.11 |
-| Service discovery mechanism | Course requirement |
-| Datastore split — which RDBMS, which NoSQL, what belongs in each | Course requirement |
+| Erasure cascade — orchestration or choreography, and how the verification pass works across the two stores ADR-003 introduced | FR-5.5, FR-5.11, NFR-13 |
 | Resume ingestion channel — upload only, or an automated adapter | Open question |
+| Front-end framework and the shape of the recruiter-facing web application | Course requirement (UI for demonstration), NFR-16 |
+| Session and token mechanism for UC-0, and how workspace identity travels on internal gRPC calls and broker messages | FR-0.1 – FR-0.3, FR-0.6 |
+| Scheduler shared by UC-4 and UC-5 — where the timer runs, behaviour with more than one replica, resuming a sweep that dies half-way | FR-4.2, FR-5.2 |
+| Repository structure once implementation starts — monorepo layout, shared protobuf definitions | Open question |
 
 ---
 

@@ -27,6 +27,20 @@ Assumptions currently stated in the proposal that we have not verified:
 - [ ] UC-6: may the last Admin of a workspace be removed or demoted? If so, the workspace can no
       longer be administered.
 
+Raised by the ADRs recorded on 2026-09-11, and load-bearing for them:
+
+- [ ] **The chosen LLM provider's current data-processing terms.** ADR-004 rests entirely on the
+      provider not training on API inputs and on a short, documented retention window. Verify
+      against the provider's own terms — not against the ADR, which will age — before any real
+      resume is processed.
+- [ ] **Thai-language scoring quality.** ADR-004 assumes a frontier hosted model reads mixed
+      Thai/English resumes well enough to score them fairly. Needs a small evaluation set of
+      synthetic Thai-shaped resumes to confirm.
+- [ ] **Do recruiters accept a batch that fills in progressively?** ADR-002's whole interaction
+      model assumes yes, provided progress is visible. Untested.
+- [ ] **Can the team run a Kubernetes cluster early?** ADR-001's service discovery depends on it.
+      If not, discovery has to be reconsidered before anything else is built on top.
+
 ---
 
 ## 2. Open decisions — ADR candidates
@@ -37,15 +51,28 @@ and the Service–Operations–Collaborators table are produced.
 - [ ] **Resume ingestion channel.** Batch upload is confirmed in UC-2. Is an automated channel
       (IMAP/webhook) in scope, or a stated future extension? *(Currently unresolved — the
       proposal's positioning says "plugs into existing channels" while UC-2 is upload-only.)*
-- [ ] **LLM provider and placement.** Which model, self-hosted or API, and what happens when it
-      is unavailable or slow. Cost bounding and caching strategy.
-- [ ] **Service decomposition.** Where the boundaries fall, and which is REST vs. gRPC vs.
-      broker-driven.
-- [ ] **Datastores.** Which RDBMS, which NoSQL, and what belongs in each.
-- [ ] **Async processing model** for UC-2 batches — queue topology, retry, partial failure.
-- [ ] **Scheduler design** shared by UC-4 (staleness) and UC-5 (retention).
-- [x] ~~Which quality attribute we demonstrate~~ → **Scalability** (NFR-07)
+- [ ] **Tiered screening pipeline.** A cheap deterministic filter before the model, so that
+      NFR-02/NFR-06/NFR-08 hold when a provider's rate limit caps concurrency before worker
+      count does. ADR-002 and ADR-004 leave this open deliberately.
+- [ ] **Erasure cascade — orchestration or choreography.** ADR-001 makes erasure a cross-service
+      protocol and ADR-003 makes it span two stores; neither says which component drives it or
+      how the verification pass works (FR-5.5, FR-5.11).
+- [ ] **Scheduler design** shared by UC-4 (staleness) and UC-5 (retention). Where the timer runs,
+      how it behaves with more than one replica, and how a sweep that dies half-way resumes.
+- [ ] **Session and token mechanism for UC-0**, and how workspace identity travels on internal
+      gRPC calls and broker messages. ADR-001 requires that it does, and says enforcement cannot
+      live only at the gateway — but not how.
+- [ ] **Front-end framework** and the shape of the recruiter-facing web application. The course
+      requires a UI for the demonstration; nothing else about it is settled.
+- [ ] **Repository structure** once implementation starts — monorepo layout, and where the shared
+      protobuf definitions live.
+- [x] ~~Which quality attribute we demonstrate~~ → **Scalability** (NFR-07); how it is delivered
+      and measured is in ADR-002.
 - [ ] ~~Re-match trigger (event vs. scheduled)~~ — moot while D-1 is deferred.
+
+Decided on 2026-09-11 and moved out of this file — see [adr/INDEX.md](adr/INDEX.md): service
+decomposition, protocols and service discovery (ADR-001), the async processing model for UC-2
+(ADR-002), the datastore split (ADR-003), and LLM provider and placement (ADR-004).
 
 ---
 

@@ -120,4 +120,4 @@ Invitation Email` was removed once it turned out no use case or requirement desc
 | Use Case Diagram | `PROPOSAL.md` → `diagrams/use-case-diagram.puml` | Done — UML notation, PlantUML source with rendered SVG |
 | Functional Requirements | `PROPOSAL.md` → `FUNCTIONAL-REQUIREMENTS.md` | Done — 50, traced to use cases |
 | Non-functional Requirements | `PROPOSAL.md` → `NON-FUNCTIONAL-REQUIREMENTS.md` | Done — 17, grouped by quality attribute |
-| ADRs (≥3) | `../adr/` | **Not started** — template ready |
+| ADRs (≥3) | `../adr/` | Done — 4 recorded (ADR-001…004), summarised in `PROPOSAL.md` |

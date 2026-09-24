@@ -156,6 +156,8 @@ clone or a new session. Do not link to it by path and do not assume anyone can o
 | The lecturer's ADR samples | **In the repo**, `docs/reference/` | Safe to reference |
 | Course requirements & grading | **In the repo**, `docs/course/` — copies | Safe to reference |
 | The assignment brief and submission guideline | **In the repo**, `docs/course/ASSIGNMENT.md` | Safe to reference |
+| The architecture diagram | **Deprecated in this repo.** `docs/diagrams/architecture-diagram.svg` is the old hand-laid version; the live one is being redrawn **outside the repo** | Do not spend effort correcting the committed SVG. Known defects in it are recorded but not being fixed here. When the new diagram lands, it replaces the file and `docs/ARCHITECTURE.md` is revisited with it. |
+| The ADR Word export, `HireAssist-ADRs.docx` | Moved **outside this repo**, to the sibling `word/` folder | Not linked from the repo. Regenerate with `docs/adr/build-docx.py` if it is needed again — the markdown in `docs/adr/` is the source. |
 | Verbal guidance given in class, or decisions made in chat | Nowhere, unless written down | This is the dangerous one — see below |
 
 **The rule:** if a decision, constraint or piece of guidance influences the documents, it must
@@ -198,11 +200,11 @@ Silent synonyms are how a domain model rots.
 
 - **Course requirements** (`docs/course/REQUIREMENTS.md`): REST + gRPC + message broker, API
   gateway, service discovery, RDBMS + NoSQL, 2 load tests, risk matrix, one demonstrated quality
-  attribute. All are satisfied **except the protocol spread**: as of 2026-09-12 the architecture
-  is **REST on every boundary, with no gRPC and no message broker** (ADR-001, ADR-002). That is a
-  deliberate first step — boundaries first, protocol variety second — and it is a known,
-  documented gap to close before the final submission, not an oversight to design around. Do not
-  quietly reintroduce gRPC or a broker into a document; changing it back is an ADR.
+  attribute. One gap remains: **there is no message broker.** The architecture is REST on every
+  boundary (ADR-001) except the AI Service, which is gRPC (ADR-007). The broker half is a known,
+  documented gap to close before the final submission, not an oversight to design around — the
+  likeliest home for it is the pipeline events Hiring currently pushes synchronously. Do not
+  quietly introduce a broker into a document; taking that step is an ADR.
 - **PDPA** is a first-class design force, not a feature. Consent and retention gate what the
   system may do with candidate data.
 - **Never commit real resumes or candidate data.** `/data/` and `/uploads/` are gitignored.

@@ -19,6 +19,7 @@ The course requires **at least 3 ADRs** as part of the project proposal submissi
 | [ADR-004](ADR-004-llm-access.md) | All model access through one AI Service, on a managed API that does not train on our data | Accepted | 2026-09-11 |
 | [ADR-005](ADR-005-per-service-language.md) | Each service chooses its own language and framework, within shared contracts | **Proposed** | 2026-09-11 |
 | [ADR-006](ADR-006-single-tenant-deployment.md) | One deployment per customer company | Accepted | 2026-09-11 |
+| [ADR-007](ADR-007-grpc-for-the-ai-service.md) | gRPC on the AI Service boundary | Accepted | 2026-09-20 |
 
 The four are best read in order: ADR-001 draws the boundaries, ADR-002 fills in the busiest one,
 ADR-003 says what each side stores, and ADR-004 fills in the dependency the others are built to
@@ -41,12 +42,13 @@ place that tracks which parts of an earlier record no longer hold.
 
 | Record | Still in force | Changed by a later record |
 |---|---|---|
-| **ADR-001** | The five services, the capability boundaries, the gateway, Kubernetes discovery, and REST on every boundary. | The single-backend-language assumption is withdrawn (ADR-005). The workspace concept is gone (ADR-006): the isolation force in *Issue*, the gateway's workspace resolution, the internal-call cost, and the *Identity & Workspace* name. |
+| **ADR-001** | The five services, the capability boundaries, the gateway, Kubernetes discovery, and REST on every boundary **except the AI Service**. | The single-backend-language assumption is withdrawn (ADR-005). The workspace concept is gone (ADR-006): the isolation force in *Issue*, the gateway's workspace resolution, the internal-call cost, and the *Identity & Workspace* name. The AI Service boundary is gRPC, not REST (ADR-007); the rule stands everywhere else. |
 | **ADR-002** | All of it. | — |
 | **ADR-003** | The PostgreSQL / MongoDB split and the rule that decides which store new data goes in. | Documents carry `candidate_id` alone, with no `workspace_id` (ADR-006). |
-| **ADR-004** | All of it. | — |
-| **ADR-005** | The principle and the guardrails. Still *Proposed* — languages await service ownership. | The worst case its access-check argument guards against is now a privilege mistake inside one company, not a cross-company leak (ADR-006). |
+| **ADR-004** | The three operations, the single credential, no fallback model, and the service being unreachable from the gateway. | Those operations are carried over gRPC rather than REST (ADR-007). |
+| **ADR-005** | The principle and the guardrails. Still *Proposed* — languages await service ownership. | The worst case its access-check argument guards against is now a privilege mistake inside one company, not a cross-company leak (ADR-006). Its contract guardrail now covers two mechanisms: OpenAPI for REST boundaries, a `.proto` for the AI Service (ADR-007). |
 | **ADR-006** | All of it. | — |
+| **ADR-007** | All of it. | — |
 
 ## Candidate decisions
 

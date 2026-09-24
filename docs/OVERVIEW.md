@@ -12,8 +12,10 @@ to three documents and must be corrected whenever any of them changes:
 | Use case descriptions, actors, main and alternate flows | [PROPOSAL.md](PROPOSAL.md) |
 | Why any of this is shaped the way it is | [adr/](adr/) |
 
-Every call below is **REST over HTTP/JSON**. There is no gRPC and no message broker
-([ADR-001](adr/ADR-001-service-decomposition.md), [ADR-002](adr/ADR-002-async-screening-pipeline.md)).
+Every call below is **REST over HTTP/JSON** ([ADR-001](adr/ADR-001-service-decomposition.md)),
+**except calls into the AI Service, which are gRPC**
+([ADR-007](adr/ADR-007-grpc-for-the-ai-service.md)). There is no message broker
+([ADR-002](adr/ADR-002-async-screening-pipeline.md)).
 
 ---
 
@@ -75,7 +77,8 @@ Every call below is **REST over HTTP/JSON**. There is no gRPC and no message bro
 - **Does** — the only place a model is ever called. Three operations, expressed in domain terms
   rather than model terms. Owns the token budget and rate limits, strips protected attributes
   before a prompt is built, and records the model version with every answer.
-- **Called by** — Hiring and Resume Processing only. Not reachable through the Gateway.
+- **Called by** — Hiring and Resume Processing only, over gRPC. Not reachable through the Gateway,
+  which is what makes a non-browser-friendly protocol acceptable on this boundary.
 - **Calls** — the LLM adapter, to the managed provider. Nothing else.
 
 ### Compliance & Insights Service

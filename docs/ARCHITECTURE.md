@@ -6,9 +6,9 @@ The two describe the same services and must agree — the table lists every oper
 shows who calls whom.
 
 This is the first version of the architecture. It will be revised in later progress checkpoints;
-what it must already do is show every component and operation the three core business use cases
-need, end to end: **UC-1** create a job opening, **UC-2** batch-screen resumes, **UC-3** generate
-interview questions.
+what it must already do is show every component the three core business use cases need — **UC-1**
+create a job opening, **UC-2** batch-screen resumes, **UC-3** generate interview questions — and
+the collaborations between them.
 
 ![HireAssist architecture diagram](diagrams/architecture-diagram.svg)
 
@@ -23,18 +23,15 @@ boxes and arrows in the file directly and commit it — there is no separate sou
 - **An arrow `A → B` means "A calls B."** Responses are not drawn. Where a caller uses what it
   got from one call to make another, both arrows leave the caller — `A → B` and `A → C` — never a
   chain `A → B → C`, which would mean B calls C.
-- **A plain line between a service and a data store means the service owns that store.** No
-  service reads another service's store; it calls the owning service's operation instead.
-- **Arrows are not labelled with operations** — the table lists them, and the traces below walk
-  through each use case. **Every call in version 1 is REST**, as the course asks for a first
-  version. The protocols the ADRs decided — gRPC into the AI Service (ADR-001) and RabbitMQ
-  between Hiring and Resume Processing (ADR-002) — will replace the corresponding arrows in a
-  later version without changing which service calls which.
-- **External systems** sit on the right, outside the deployment boundary. Each is reached through
-  an adapter inside the service that calls it, so no domain logic depends on a provider's API
-  directly.
-- **One deployment serves one customer company** (ADR-006). The dashed boundary is that
-  deployment; there is no tenant identity anywhere inside it.
+- **A service's private store is drawn beside it**, and it is that service's alone. No service
+  reads another service's store; it calls the owning service's operation instead.
+- **Arrows are not labelled with operations** — the table lists them. **Every arrow is REST over
+  HTTP/JSON except the two into the AI Service, which are gRPC** (ADR-001, ADR-007). There is no
+  message broker anywhere in the picture.
+- **External systems** sit on the right, inside the dashed box. Each is reached through an adapter
+  in the service that calls it, so no domain logic depends on a provider's API directly.
+- **One deployment serves one customer company** (ADR-006), so everything outside that dashed box
+  is one company's instance and there is no tenant identity anywhere inside it.
 
 ## Actors
 
@@ -53,59 +50,46 @@ because the table lists it, but it is connected only to the gateway — no other
 
 | Service | Business capability | Use cases | Owns (private store) |
 |---|---|---|---|
-| **API Gateway** | Single entry point: TLS, session validation, rate limiting, routing | — | nothing |
-| **Identity Service** | Who may sign in and with which role | UC-0, UC-6 | PostgreSQL — users, roles, sessions |
-| **Hiring Service** | The hiring record: openings and criteria, screening batches and their results, shortlist decisions, interview guides | UC-1, UC-2, UC-3 | PostgreSQL — job openings, criteria, batches, screening results, decisions; MongoDB — interview guides |
-| **Resume Processing Service** | Turning one resume file into a scored candidate profile | UC-2 (per-resume work) | MongoDB — candidate profiles, parsed text, scoring evidence and justifications |
+| **API Gateway** | Single entry point for user traffic: TLS, session validation, rate limiting, routing. The System Scheduler is an internal trigger and does not pass through it | — | nothing |
+| **Identity Service** | Who may sign in and with which role | UC-0, UC-6 | PostgreSQL — accounts, memberships, roles, sessions |
+| **Hiring Service** | The hiring record: openings and criteria, screening batches and their results, shortlist decisions, interview guides | UC-1, UC-2, UC-3 | PostgreSQL — job openings, criteria, batches and per-entry status, scores and overrides, shortlist decisions; MongoDB — interview guides |
+| **Resume Processing Service** | Turning one resume file into a scored candidate profile | UC-2 (per-resume work) | PostgreSQL — the screening work table, candidate identity, collection date; MongoDB — candidate profiles, parsed text, per-criterion scoring output and justifications |
 | **AI Service** | Every call to the language model, behind domain operations | UC-1, UC-2, UC-3 | nothing — prompts and the model credential only |
-| **Compliance & Insights Service** | Retention enforcement and the pipeline dashboard | UC-4, UC-5 | PostgreSQL — retention policy, pipeline metrics, erasure audit log |
+| **Compliance & Insights Service** | Retention enforcement and the pipeline dashboard | UC-4, UC-5 | PostgreSQL — retention policy, pipeline metrics, erasure and access audit logs |
 
 Resume files themselves live in object storage, written by Hiring when a batch is uploaded and
 read by Resume Processing when it works; neither database holds them.
 
-## The three business use cases, traced
+## How the use cases run through it
 
-The check the course asks for: *Actor → operation → responsible service → collaborators → where
-the data lands.*
+This page stops at the picture: the components, what each owns, and who calls whom. The call
+sequence behind every use case — actor, operation, responsible service, collaborators, and where
+the data lands — is traced in **[OVERVIEW.md](OVERVIEW.md)**, including UC-0, UC-4, UC-5 and UC-6,
+which the diagram touches but does not centre on.
 
-**UC-1 — Create a job opening.** Recruiter → `createJobOpening()` on **Hiring**. Hiring →
-**AI Service** `deriveCriteriaFromDescription()` → LLM Provider. Hiring returns the proposed
-criteria; the Recruiter revises them (`reviseScreeningCriteria()`) and confirms. Hiring stores the
-opening and its criteria in its PostgreSQL; **Compliance & Insights** later reads the
-*JobOpeningCreated* pipeline event through Hiring's `getPipelineEvents()` for the dashboard.
+They were traced in both places for a while, which is how the two drifted apart. One description
+of runtime behaviour, one home for the diagram.
 
-**UC-2 — Batch-screen resumes.** Recruiter → `submitScreeningBatch()` on **Hiring**. Hiring stores
-each PDF in **Object Storage** (`storeResumeFile()`), creates the batch with one pending entry per
-resume, calls **Resume Processing** `screenResume()` once per resume, and returns the batch id.
-For each resume, Resume Processing fetches the file (`fetchResumeFile()`), extracts the text,
-calls **AI Service** `extractProfileFields()` and `scoreAgainstCriteria()` — the criteria come from
-Hiring's `getScreeningCriteria()` — stores the profile and the full scoring evidence in its
-MongoDB, and calls Hiring `recordScreeningResult()`. Hiring records the score and justification
-against the batch entry in its PostgreSQL and streams it to the ranked list
-(`getRankedResults()`). When every entry is terminal, Hiring sends the batch-finished email
-through the **Email Provider**. The Recruiter overrides scores (`overrideScore()`) and shortlists
-(`recordDecision()`), all in Hiring.
+## Why REST everywhere except the AI Service
 
-**UC-3 — Generate interview questions.** Recruiter → `generateInterviewGuide()` on **Hiring** for a
-shortlisted candidate. Hiring → **Resume Processing** `getCandidateProfile()` for the profile, then
-→ **AI Service** `generateInterviewQuestions()` → LLM Provider. Hiring stores the guide in
-its MongoDB; the Recruiter revises it (`reviseGuide()`) and later records notes against it
-(`recordInterviewNote()`).
+The reasoning behind one protocol was that boundaries are expensive to get wrong and protocols are
+not. A boundary in the wrong place means re-owned data, a re-cut schema and a coordinated release;
+a protocol in the wrong place is one adapter rewritten behind an interface that already exists. So
+ADR-001 placed the boundaries first, ran them all over the protocol everybody on the team can
+already debug, and named the AI Service call as the first place to revisit.
 
-**UC-4 and UC-5** follow the same pattern from the other side: the **System Scheduler** calls
-**Compliance & Insights** `evaluateStaleness()` and `evaluateRetention()`; the dashboard is served
-from counters Compliance maintains from Hiring's `getPipelineEvents()` and Identity's
-`listAuthorisationRejections()`; erasure is
-orchestrated by Compliance calling `eraseHiringData()` on Hiring and `eraseCandidateProfile()` on
-Resume Processing, and the audit entry is written in Compliance's own PostgreSQL.
+**That revisit has happened.** ADR-007 makes the AI Service gRPC, on three properties that separate
+it from every other boundary: it carries the highest call volume in the system — once per resume,
+not once per batch — its contract is the narrowest and least forgiving, and it is the boundary most
+likely to be crossed by two different languages. Its three operations are defined in a `.proto` and
+both callers use a generated client, so a renamed field fails at build time rather than producing a
+score with the justification quietly missing. The service is internal and never exposed through the
+gateway, which is what makes a protocol nobody can read in a network tab acceptable here and
+nowhere else.
 
-## Why version 1 is REST-only
-
-The course asks that a first version use REST throughout and leave message brokers for a later
-checkpoint. Version 1 does that: every arrow is a REST call, including the per-resume hand-off
-from Hiring to Resume Processing (`screenResume()` / `recordScreeningResult()`) and the way
-Compliance & Insights learns about pipeline events (`getPipelineEvents()`). This is a presentation
-choice for the first version, not a reversal of the decisions: ADR-001 chose gRPC for the AI
-Service boundary and ADR-002 chose RabbitMQ, with one message per resume, for screening. When
-those are drawn in, the Hiring ↔ Resume Processing arrows become messages through a broker and the
-AI Service arrows become gRPC; no service gains or loses a responsibility.
+**The message broker is still a known gap, and a deliberate one.** A spread of communication styles
+is expected of us — at least one service reached by REST, one by RPC and one driven by a broker —
+and two of the three are now delivered. ADR-001 recorded the shortfall as chosen rather than
+overlooked, and the place the broker would earn its keep is already identified: the pipeline events
+Hiring pushes synchronously into Compliance's write path, where a dropped call leaves a permanently
+wrong dashboard number and nothing to reconcile against. Taking that step is its own record.

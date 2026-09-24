@@ -1,14 +1,14 @@
 # Service–Operations–Collaborators
 
 HireAssist · service decomposition per **ADR-001**, as amended by **ADR-006** — 5 services + 1 API
-Gateway. **Every collaboration is REST over HTTP/JSON** (ADR-001) — there is no second protocol
-and no message broker, so the protocol is not marked per row.
+Gateway. **Every collaboration is REST over HTTP/JSON** (ADR-001) **except calls into the AI
+Service, which are gRPC** (ADR-007). There is no message broker. Only the gRPC calls are marked.
 
 | Service | Operations | Collaborators |
 |---|---|---|
 | **Identity Service**<br><br>*owns: accounts, memberships,<br>roles, sessions*<br><br>UC-0 · UC-6 | `authenticateMember()`<br>`validateSession()`<br>`getMemberRole()`<br>`createMember()`<br>`removeMember()`<br>`changeMemberRole()` | *(none)* |
-| **Hiring Service**<br><br>*owns: job openings, criteria,<br>screening batches and entry status,<br>scores and overrides, shortlist<br>decisions, interview guides*<br><br>UC-1 · UC-2 · UC-3 | `createJobOpening()`<br>`reviseScreeningCriteria()`<br>`getScreeningCriteria()`<br>`getJobOpening()`<br>`pauseOpening()`<br>`resumeOpening()`<br>`closeOpening()`<br>`submitScreeningBatch()`<br>`getBatchStatus()`<br>`getRankedResults()`<br>`overrideScore()`<br>`shortlistCandidate()`<br>`generateInterviewGuide()`<br>`reviseGuide()`<br>`getInterviewGuide()`<br>`recordInterviewNote()`<br>`reportScreeningResult()`<br>`eraseHiringData()` | **Object Storage Adapter**<br>　`storeResumeFile()`<br>**Resume Processing Service**<br>　`submitResumeForScreening()`<br>　　*(carries the criteria snapshot)*<br>　`getCandidateProfile()`<br>**AI Service**<br>　`deriveCriteriaFromDescription()`<br>　`generateInterviewQuestions()`<br>**Compliance & Insights Service**<br>　`recordPipelineEvent()`<br>**Email Adapter**<br>　`sendEmail()` |
-| **Resume Processing Service**<br><br>*owns: candidate identity and<br>collection date, candidate profiles,<br>parsed resume text, per-criterion<br>scoring output and justifications*<br><br>UC-2 (per-resume work) | `submitResumeForScreening()`<br>`getCandidateProfile()`<br>`listCandidateProfiles()`<br>`listUnparsableResumes()`<br>`eraseCandidateProfile()` | **Object Storage Adapter**<br>　`fetchResumeFile()`<br>**AI Service**<br>　`scoreAgainstCriteria()`<br>**Hiring Service**<br>　`reportScreeningResult()` *(callback)* |
+| **Hiring Service**<br><br>*owns: job openings, criteria,<br>screening batches and entry status,<br>scores and overrides, shortlist<br>decisions, interview guides*<br><br>UC-1 · UC-2 · UC-3 | `createJobOpening()`<br>`reviseScreeningCriteria()`<br>`getScreeningCriteria()`<br>`getJobOpening()`<br>`pauseOpening()`<br>`resumeOpening()`<br>`closeOpening()`<br>`submitScreeningBatch()`<br>`getBatchStatus()`<br>`getRankedResults()`<br>`overrideScore()`<br>`shortlistCandidate()`<br>`generateInterviewGuide()`<br>`reviseGuide()`<br>`getInterviewGuide()`<br>`recordInterviewNote()`<br>`reportScreeningResult()`<br>`eraseHiringData()` | **Object Storage Adapter**<br>　`storeResumeFile()`<br>**Resume Processing Service**<br>　`submitResumeForScreening()`<br>　　*(carries the criteria snapshot)*<br>　`getCandidateProfile()`<br>**AI Service** *(gRPC)*<br>　`deriveCriteriaFromDescription()`<br>　`generateInterviewQuestions()`<br>**Compliance & Insights Service**<br>　`recordPipelineEvent()`<br>**Email Adapter**<br>　`sendEmail()` |
+| **Resume Processing Service**<br><br>*owns: candidate identity and<br>collection date, candidate profiles,<br>parsed resume text, per-criterion<br>scoring output and justifications*<br><br>UC-2 (per-resume work) | `submitResumeForScreening()`<br>`getCandidateProfile()`<br>`listCandidateProfiles()`<br>`listUnparsableResumes()`<br>`eraseCandidateProfile()` | **Object Storage Adapter**<br>　`fetchResumeFile()`<br>**AI Service** *(gRPC)*<br>　`scoreAgainstCriteria()`<br>**Hiring Service**<br>　`reportScreeningResult()` *(callback)* |
 | **AI Service**<br><br>*owns: prompts and model credentials<br>— no domain data*<br><br>UC-1 · UC-2 · UC-3 | `deriveCriteriaFromDescription()`<br>`scoreAgainstCriteria()`<br>`generateInterviewQuestions()` | **LLM Adapter**<br>　`complete()` |
 | **Compliance & Insights Service**<br><br>*owns: retention policy, pipeline<br>metrics, erasure and access audit logs*<br><br>UC-4 · UC-5 | `setRetentionPolicy()`<br>`evaluateRetention()`<br>`listHeldExpiries()`<br>`resolveHeldExpiry()`<br>`eraseCandidate()`<br>`getErasureAudit()`<br>`getPipelineDashboard()`<br>`evaluateStaleness()`<br>`recordPipelineEvent()`<br>`recordAuthorisationRejected()` | **Hiring Service**<br>　`eraseHiringData()`<br>**Resume Processing Service**<br>　`eraseCandidateProfile()`<br>　`listCandidateProfiles()`<br>**Email Adapter**<br>　`sendEmail()` |
 
@@ -23,8 +23,8 @@ AI Service), Email Provider. PDF text extraction is an in-process library in Res
 not an external service — a scanned image with no text layer is a permanent failure by design
 (FR-2.7), not something to send to an OCR provider.
 
-No service reads another service's data store. Every crossing is one of the operations above,
-called over REST.
+No service reads another service's data store. Every crossing is one of the operations above —
+REST, or gRPC where marked.
 
 ---
 

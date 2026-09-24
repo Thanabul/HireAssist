@@ -34,10 +34,11 @@ Term project for **Software Architecture**, Chulalongkorn University.
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | **The submission document.** Project description, target customers, use cases, requirements, ADRs. Source of truth. |
 | [docs/FUNCTIONAL-REQUIREMENTS.md](docs/FUNCTIONAL-REQUIREMENTS.md) | 44 functional requirements, traced to the use case each serves. |
 | [docs/NON-FUNCTIONAL-REQUIREMENTS.md](docs/NON-FUNCTIONAL-REQUIREMENTS.md) | 17 non-functional requirements, grouped by quality attribute. |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture diagram (version 1) with the three business use cases traced through the services. |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture diagram (version 1): the components, what each owns, and how to read the picture. |
 | [docs/diagrams/](docs/diagrams/) | Diagrams as code — the use case diagram (PlantUML source + rendered SVG) and the architecture diagram (hand-laid SVG). |
 | [docs/SERVICE-OPERATIONS-COLLABORATORS.md](docs/SERVICE-OPERATIONS-COLLABORATORS.md) | Each service's operations and who it collaborates with. |
 | [docs/OVERVIEW.md](docs/OVERVIEW.md) | Runtime view — what each service owns, who calls whom, and the call sequence behind each use case. |
+| [docs/HireAssist-SOC.docx](docs/HireAssist-SOC.docx) | The Service–Operations–Collaborators table as a Word document. Regenerate rather than edit. |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | Internal working notes — open questions, open decisions, glossary. Not for submission. |
 | [docs/adr/](docs/adr/) | Architecture Decision Records, one decision per file, with an index. |
 | [docs/course/ASSIGNMENT.md](docs/course/ASSIGNMENT.md) | The assignment brief and submission guideline this proposal is written against. |

@@ -90,6 +90,134 @@ what a session decided, and rewriting it destroys the record of when and why som
 question; service ownership and the erasure verification pass are still open.
 ---
 
+---
+
+---
+
+---
+
+---
+
+---
+
+---
+
+## 2026-09-20 11:20 — The committed architecture diagram is deprecated
+
+The diagram is being redrawn outside the repo, so `docs/diagrams/architecture-diagram.svg` is now
+the old version. Recorded in CLAUDE.md's *Context outside this repository* table: the known defects
+in it — the Compliance to Identity arrow, the missing Hiring to Compliance arrow, the stale header
+comment, and the two AI Service arrows that ADR-007 makes gRPC — stay recorded but are not being
+fixed here. `docs/ARCHITECTURE.md` still embeds it and gets revisited when the replacement lands.
+
+---
+
+## 2026-09-20 11:05 — ADR-007: gRPC on the AI Service boundary
+
+A new record rather than an edit to ADR-001 — the stack stays append-only, and ADR-001 keeps saying
+what it said on the day.
+
+**The decision.** The AI Service speaks gRPC; every other boundary stays REST. Three RPCs in a
+`.proto`, generated clients on both sides, field numbers never reused, still unreachable from the
+gateway.
+
+**Why this boundary.** Highest call volume in the system (once per resume, not once per batch); the
+narrowest and least forgiving contract, where a renamed field silently costs a justification rather
+than raising an error; and the boundary most likely to be crossed by two different languages under
+per-service language choice. ADR-001 had already named it as the first to revisit.
+
+**Recorded honestly in the ADR:** "easier to consume" is normally the argument *against* gRPC — it
+is worse for a browser, an outside integrator or anyone with `curl`. It works here only because the
+boundary has none of those consumers. Inside the system, easy to consume means a typed client the
+caller did not write. Also recorded: a gRPC service is required of us and none existed, so the
+record is convenient as well as correct; what makes it defensible is that the boundary was chosen
+on properties that would hold if the requirement did not exist.
+
+**Cascade into the living documents** — no ADR was edited:
+- **INDEX.md** — new row, and "What later records have changed" updated for ADR-001 (the REST rule
+  now has one exception), ADR-004 (same operations, different transport) and ADR-005 (its contract
+  guardrail now covers OpenAPI *and* a `.proto`).
+- **SOC table** — the two AI Service collaborations marked *(gRPC)*; the header no longer claims a
+  single protocol.
+- **ARCHITECTURE.md** — reading key and the protocol section rewritten; the section is now "Why
+  REST everywhere except the AI Service".
+- **OVERVIEW.md** and **CLAUDE.md** — the blanket REST statement narrowed; the outstanding gap is
+  now the message broker alone.
+
+Outstanding: the `.proto` has no home yet (the repository-structure question is now urgent), and
+the diagram's two AI Service arrows need a gRPC label — on top of the four SVG edits already open.
+
+---
+
+## 2026-09-20 10:30 — ARCHITECTURE.md trimmed to the diagram; traces live in OVERVIEW.md
+
+Two prose descriptions of the same runtime behaviour is the drift surface that caused the PR #5
+mess in the first place, and adding OVERVIEW.md on 12 Sep created a second one.
+
+- **ARCHITECTURE.md** loses its three use-case traces (46 lines) and points at OVERVIEW.md, which
+  covers all seven use cases rather than three. It keeps what is tied to the picture: the diagram,
+  the reading key, the actors table, the services-and-stores table, and why every boundary is REST.
+  93 lines, down from 129.
+- Considered deleting the file outright — rejected. It is the only thing that renders the SVG, and
+  an architecture diagram is a required deliverable; deleting it would orphan the image.
+- README's one-line description updated to match.
+
+Outstanding: the four SVG edits — the Compliance→Identity arrow, the missing Hiring→Compliance
+arrow, the stale header comment and footer, and the gateway→Resume Processing arrow (which should
+wait until the routing question is settled rather than deciding it by accident).
+
+---
+
+## 2026-09-12 06:48 — ARCHITECTURE.md brought in line with the rest
+
+PR #5 was branched before the REST-only change and merged rather than rebased, so the page still
+described the pre-REST design. Eighteen corrections; the SVG is deliberately left alone for now.
+
+- **The protocol story.** "Why version 1 is REST-only" claimed the course asks for REST first and
+  brokers later — it does not; it asks for a spread of styles, and ADR-001 records our failure to
+  meet that as deliberate. Replaced with "Why every boundary is REST": the decision, the reasoning
+  (boundaries are expensive to move, protocols are not), and the gap stated plainly as a gap. The
+  reading key no longer promises gRPC and RabbitMQ in a later version.
+- **Six operation names** corrected: `screenResume`→`submitResumeForScreening`,
+  `recordScreeningResult`→`reportScreeningResult`, `recordDecision`→`shortlistCandidate`,
+  `extractProfileFields` removed (extraction is deterministic and in-process), and
+  `getPipelineEvents`/`listAuthorisationRejections` replaced by the pushes that really happen.
+- **Design errors.** Criteria travel in the hand-off body, not fetched per resume; the
+  justification stays in Resume Processing; the UC-2 trace now describes the work table, the
+  criteria snapshot and the *needs manual review* terminal state.
+- **Three stores were missing** from the service table: Resume Processing's PostgreSQL, Identity's
+  memberships, Compliance's access audit log.
+- **Two notations the key described but the diagram never draws** — ownership lines and a dashed
+  deployment boundary — reworded to describe what is actually drawn, since the SVG is untouched.
+  The gateway is now "single entry point for user traffic", which the System Scheduler no longer
+  contradicts.
+
+Outstanding: six SVG findings — the Compliance→Identity arrow, the missing Hiring→Compliance
+arrow, the stale header comment and footer, and the two absent notations.
+
+---
+
+## 2026-09-12 06:22 — SOC table exported to a Word document
+
+- **docs/HireAssist-SOC.docx** — the Service–Operations–Collaborators table alone, landscape, with
+  the header row repeating across pages. The notes, the gateway paragraph and the open-decisions
+  list are deliberately left out; the markdown keeps those.
+- Generated by `docs/build-soc-docx.py` from the markdown, which stays the source. Regenerate
+  after any change rather than editing the .docx.
+
+---
+
+## 2026-09-12 06:05 — ADRs exported to a Word document
+
+- **docs/HireAssist-ADRs.docx** — all six records in one file: title page, a contents table with
+  each record's status, then ADR-001 to ADR-006, one per page. Generated from the markdown by
+  `python-docx` (no pandoc on this machine), so headings, tables, quotes and inline code are real
+  Word styles rather than a conversion artifact.
+- The markdown in `docs/adr/` stays the source. Regenerate the .docx after any ADR change rather
+  than editing it — it carries no content of its own.
+
+---
+
 ## 2026-09-12 05:38 — ADRs are append-only; amendment notes removed
 
 An ADR is a record made on a date, and a later decision must not reach back into it. Four dated

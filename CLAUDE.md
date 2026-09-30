@@ -1,8 +1,11 @@
 # CLAUDE.md — working rules for this repository
 
-HireAssist is a Software Architecture term project. Right now it is **documentation only**;
-implementation comes later. The documents *are* the deliverable, so keeping them accurate is
-not housekeeping — it is the work.
+HireAssist is a Software Architecture term project. It is a **monorepo**: the documentation in
+`docs/`, and from 2026-09-24 the services themselves under `services/` with shared gRPC contracts
+in `proto/`.
+
+The documents *are* the graded deliverable, so keeping them accurate is not housekeeping — it is
+the work. Code is held to the ordinary standard of code.
 
 ---
 
@@ -18,7 +21,17 @@ file, every place that contradicts it has been fixed, and `CHANGELOG.md` records
 
 ## The changelog is not optional
 
-**Any change to the documentation gets an entry in `CHANGELOG.md`.**
+**Any change to the documentation gets an entry in `CHANGELOG.md`. Changes to code do not.**
+
+`CHANGELOG.md` is the log of the *documentation* — what was decided about the system and why. Git
+history is the log of the code. Writing a new service, adding a dependency, fixing a bug or
+scaffolding a package is a commit message, not a changelog entry, and putting it here buries the
+decisions the changelog exists to hold.
+
+The line is about *decisions, not files*. When work on the code settles something that was open in
+the documents — a layout that was an open question, a language that was undecided, a contract
+shape an ADR left abstract — that decision is documentation and gets an entry, describing the
+decision rather than the code that revealed it. The commit still carries the code.
 
 It is a *summary* log, not a diff — Git already has the diffs. Record the decision and the
 reason for it, in prose a teammate can read months later. The test: if someone could
@@ -38,7 +51,8 @@ reasonably ask *"why did we do that?"*, the answer belongs in the changelog.
 - End with what is still outstanding, in a line.
 
 A `PostToolUse` hook (`.claude/settings.json` → `.claude/hooks/changelog-reminder.sh`) injects
-this reminder automatically whenever any file under `docs/` is actually modified. It compares
+this reminder automatically whenever any file under `docs/` is actually modified — and only
+`docs/`, which is the right scope for the rule above: editing a service does not ask for an entry. It compares
 modification times against a marker rather than reading the tool's arguments, so it catches an
 edit however it was made, stays silent when a file was only read, and reports a change once. It
 is POSIX `sh` with no interpreter dependency, so it runs on any machine with a shell. It is a
@@ -56,7 +70,7 @@ Claude Code session that has it loaded.
 | `docs/adr/` | One file per architectural decision, plus `INDEX.md`. | Decisions still being debated |
 | `docs/OVERVIEW.md` | The **runtime view**: per-service ownership and the call sequence behind each use case. Defers to PROPOSAL (use cases), the SOC table (operations) and the ADRs (why) — correct it whenever any of those change. | Anything it would be the source of truth for |
 | `README.md` | Orientation: pitch, team, doc index, use case list, repo status. | Detail that belongs in PROPOSAL.md |
-| `CHANGELOG.md` | A dated summary of what changed and **why**, newest first. | File-by-file diffs |
+| `CHANGELOG.md` | A dated summary of what changed **in the documentation** and why, newest first. | File-by-file diffs; code changes, which belong in commit messages |
 
 **No duplication between `PROPOSAL.md` and `CONTEXT.md`.** They overlapped once and it went
 stale immediately. When something moves from open to settled, it moves *out* of CONTEXT and

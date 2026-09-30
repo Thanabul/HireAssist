@@ -20,6 +20,7 @@ The course requires **at least 3 ADRs** as part of the project proposal submissi
 | [ADR-005](ADR-005-per-service-language.md) | Each service chooses its own language and framework, within shared contracts | **Proposed** | 2026-09-11 |
 | [ADR-006](ADR-006-single-tenant-deployment.md) | One deployment per customer company | Accepted | 2026-09-11 |
 | [ADR-007](ADR-007-grpc-for-the-ai-service.md) | gRPC on the AI Service boundary | Accepted | 2026-09-20 |
+| [ADR-008](ADR-008-profile-extraction-is-a-model-call.md) | Turning a resume into a candidate profile is a model call | Accepted | 2026-10-01 |
 
 The four are best read in order: ADR-001 draws the boundaries, ADR-002 fills in the busiest one,
 ADR-003 says what each side stores, and ADR-004 fills in the dependency the others are built to
@@ -27,7 +28,7 @@ survive. ADR-002 and ADR-004 are a deliberate pair — running without a fallbac
 acceptable because no accepted work is lost (NFR-10).
 
 Five candidates identified on 2026-09-11 have since been answered and removed from the list
-below, which now holds nine: the
+below, which now holds eleven — two of them raised by ADR-008. The five answered were: the
 model-provider question by ADR-004; work-queue topology, worker scaling and delivery guarantee by
 ADR-002; the scorer boundary by ADR-001 and ADR-004, with per-criterion evidence persistence by
 ADR-003; service discovery by ADR-001; and the datastore split by ADR-003.
@@ -42,13 +43,14 @@ place that tracks which parts of an earlier record no longer hold.
 
 | Record | Still in force | Changed by a later record |
 |---|---|---|
-| **ADR-001** | The five services, the capability boundaries, the gateway, Kubernetes discovery, and REST on every boundary **except the AI Service**. | The single-backend-language assumption is withdrawn (ADR-005). The workspace concept is gone (ADR-006): the isolation force in *Issue*, the gateway's workspace resolution, the internal-call cost, and the *Identity & Workspace* name. The AI Service boundary is gRPC, not REST (ADR-007); the rule stands everywhere else. |
+| **ADR-001** | The five services, the capability boundaries, the gateway, Kubernetes discovery, and REST on every boundary **except the AI Service**. | The single-backend-language assumption is withdrawn (ADR-005). The workspace concept is gone (ADR-006): the isolation force in *Issue*, the gateway's workspace resolution, the internal-call cost, and the *Identity & Workspace* name. The AI Service boundary is gRPC, not REST (ADR-007); the rule stands everywhere else. Its argument that Resume Processing and the AI Service have opposite resource profiles no longer holds — both now wait on a model call (ADR-008); the boundary stands on failure isolation and credential containment. |
 | **ADR-002** | All of it. | — |
 | **ADR-003** | The PostgreSQL / MongoDB split and the rule that decides which store new data goes in. | Documents carry `candidate_id` alone, with no `workspace_id` (ADR-006). |
-| **ADR-004** | The three operations, the single credential, no fallback model, and the service being unreachable from the gateway. | Those operations are carried over gRPC rather than REST (ADR-007). |
-| **ADR-005** | The principle and the guardrails. Still *Proposed* — languages await service ownership. | The worst case its access-check argument guards against is now a privilege mistake inside one company, not a cross-company leak (ADR-006). Its contract guardrail now covers two mechanisms: OpenAPI for REST boundaries, a `.proto` for the AI Service (ADR-007). |
+| **ADR-004** | The single credential, no fallback model, the service being unreachable from the gateway, and the rule that it never receives a raw file. | Those operations are carried over gRPC rather than REST (ADR-007). There are now four, not three: profile extraction is a model call served here (ADR-008), and it is the one operation that receives unstructured resume text, which narrows the minimisation rule and moves the protected-attribute stripping into it. |
+| **ADR-005** | The principle and the guardrails. Still *Proposed* — languages await service ownership. | The worst case its access-check argument guards against is now a privilege mistake inside one company, not a cross-company leak (ADR-006). Its contract guardrail now covers two mechanisms: OpenAPI for REST boundaries, a `.proto` for the AI Service (ADR-007). Its Python preference for Resume Processing now rests on PDF text extraction alone — structuring the text is no longer done there (ADR-008). |
 | **ADR-006** | All of it. | — |
 | **ADR-007** | All of it. | — |
+| **ADR-008** | All of it. | — |
 
 ## Candidate decisions
 
@@ -59,6 +61,8 @@ Identified from the architecturally significant requirements in
 | Decision | Forced by |
 |---|---|
 | Tiered screening pipeline — deterministic filter before the model? | NFR-02, NFR-06, NFR-08 |
+| Rule-based pre-pass in front of profile extraction, once cost per batch is measured | ADR-008 |
+| Character recognition for scanned resumes, which neither extraction path handles | ADR-008 |
 | Erasure cascade — orchestration or choreography, and how the verification pass works across the two stores ADR-003 introduced | FR-5.3, FR-5.8, NFR-13 |
 | Resume ingestion channel — upload only, or an automated adapter | Open question |
 | Front-end framework and the shape of the recruiter-facing web application | Course requirement (UI for demonstration), NFR-16 |

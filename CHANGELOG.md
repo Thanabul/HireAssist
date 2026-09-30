@@ -15,6 +15,69 @@ what a session decided, and rewriting it destroys the record of when and why som
 
 ---
 
+## 2026-10-01 — ADR-008: turning a resume into a profile is a model call
+
+- **ADR-008 recorded.** Rule-based structuring of a resume was rejected because the layout is
+  chosen by the candidate and cannot be specified in advance — and because it fails *silently*: a
+  mis-associated job produces a well-formed profile, scored with confidence, which is the
+  product's central failure reintroduced one layer down. The AI Service gains a fourth operation,
+  `extractProfileFromText()`; PDF-to-text stays deterministic and in Resume Processing, so no
+  model receives a file. The profile is extracted once per resume and cached; scoring stays once
+  per resume per opening.
+- **NFR-01 raised from 5 to 20 seconds at p95, abandoning at 60** — the same bounds as scoring,
+  because it is now the same kind of work. The 5-second figure assumed text processing.
+- **NFR-14's protection weakens from structural to instructed**, accepted deliberately: excluded
+  attributes could not previously reach a prompt because the profile has no field for them;
+  extraction now sees the whole resume and is instructed to drop them. Recorded in ADR-008 rather
+  than glossed.
+- Per the append-only rule, ADR-001, ADR-004 and ADR-005 are untouched; what each no longer holds
+  is in the index. ADR-001's "opposite resource profiles" argument for the service split is the
+  notable casualty — both sides now wait on a model call.
+- Corrected in `OVERVIEW.md`, the SOC table and `ARCHITECTURE.md`, each of which asserted that
+  profile extraction is not a model call.
+
+- **`ExtractProfileFromText` implemented**, so the contract no longer contradicts the record.
+  The `.proto` comment that called parsing deterministic is corrected; the SOC table and the
+  runtime view carry the fourth operation.
+
+Outstanding: extraction quality is unmeasured — no resume has been through the prompt, and the
+protected-attribute instruction is asserted in a test against the prompt text, not against a
+model's behaviour.
+
+---
+
+## 2026-09-28 13:25 — Word proposal extended to use cases and requirements
+
+- Added *Scenario (use-case & description)*, *Functional Requirements* and *Non-functional
+  Requirements* to `HireAssist-Proposal.docx`, in the brief's order. The use case diagram is
+  rendered from the SVG at build time rather than kept as a committed PNG — the PlantUML source
+  stays the only thing maintained.
+- **The 44 FRs and 17 NFRs are parsed from their own documents, not retyped**, so the export
+  cannot drift from what owns them. Editing a requirement in Word would be editing it in the
+  wrong place. The prose sections remain condensations of `PROPOSAL.md`.
+- The NFR file's *architecturally significant* table is excluded: its rows list several ids at
+  once and are questions for ADRs, not requirements.
+- *Group Members* added under *Project Name* rather than as its own heading, and likewise read
+  from `PROPOSAL.md` — a student id mistyped into a build script is a mistake nobody proofreads.
+
+Outstanding: the export has no *ADRs* section, so it is not yet the whole brief; the changelog's
+six empty `---` separators and out-of-order entries are still there.
+
+---
+
+## 2026-09-27 03:32 — Short proposal exported to Word
+
+- `docs/HireAssist-Proposal.docx` — Project Name, Problem Description and Target Customers only,
+  condensed to about two pages because the full section runs long for a reader meeting the project
+  for the first time. Built by `docs/build-proposal-docx.py`.
+- It is a **condensation, not a conversion**: `PROPOSAL.md` stays the source of truth and the two
+  can drift. Regenerate the .docx rather than editing it in Word — the same rule as the SOC export.
+
+Outstanding: the proposal's remaining sections are not in the export; the changelog has six empty
+`---` separators around line 96 and its newest entries are not all at the top.
+
+---
+
 ## 2026-09-12 12:59 — Diagram: no arrow crosses a box
 
 - Hiring's two adapters stacked on its right edge (they sat side by side, and one adapter's arrow ran through the other); the Hiring → AI Service arrow now leaves from the top corner. Cosmetic.
@@ -99,6 +162,31 @@ question; service ownership and the erasure verification pass are still open.
 ---
 
 ---
+
+---
+
+---
+
+## 2026-09-24 14:10 — Two open decisions settled by starting implementation
+
+Work on the first service answered two questions the documents had left open. The code itself is in
+the commit; what belongs here is what it decided.
+
+- **Repository layout.** Services live at `services/<name>/`, shared gRPC contracts at `proto/` in
+  the repository root — callers generate clients from the same file the owning service serves, so
+  the contract cannot sit inside one service's directory. This was an open question in CONTEXT.md
+  and adr/INDEX.md, and ADR-007 made it urgent by needing a home for the `.proto`. Settled by fact
+  rather than by decision, so it still needs a record.
+- **Python for the AI Service.** ADR-005 leaves the language to each service's owner and is still
+  *Proposed* pending ownership. Its preference table already called this one "strong — toward
+  Python", so nothing contradicts — but one service choosing does not let ADR-005 move to Accepted.
+
+Also: README gains rows for `services/ai-service/` and `proto/`, and CLAUDE.md no longer describes
+the repo as documentation only.
+
+**Changelog scope narrowed.** This log covers the documentation; Git history covers the code.
+Scaffolding a service is a commit message, not an entry here — but a decision the code settles,
+like the two above, is documentation and still belongs. Recorded in CLAUDE.md.
 
 ---
 

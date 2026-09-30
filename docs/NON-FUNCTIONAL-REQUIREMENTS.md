@@ -21,16 +21,20 @@ verified, and paired with how that verification is done. IDs are stable once wri
 
 | ID | Requirement | Verified by |
 |---|---|---|
-| NFR-01 | The system shall parse a resume into a normalised candidate profile within 5 seconds at the 95th percentile. | Load test |
+| NFR-01 | The system shall parse a resume into a normalised candidate profile within 20 seconds at the 95th percentile, and shall abandon and retry any attempt exceeding 60 seconds. | Load test |
 | NFR-02 | The system shall produce a screening result for one parsed profile within 20 seconds at the 95th percentile, and shall abandon and retry any attempt exceeding 60 seconds. | Load test |
 | NFR-03 | The system shall return a ranked candidate list within 2 seconds for a job opening holding up to 1,000 screened candidates. | Load test |
 | NFR-04 | The system shall acknowledge a submitted screening batch within 2 seconds, independently of the size of the batch. | Load test |
 | NFR-05 | The system shall produce an interview guide within 30 seconds at the 95th percentile, indicating progress while it generates. | Load test |
 
-Parsing and scoring are separated because they are different kinds of work: parsing is
-deterministic text extraction, while scoring is a language-model call whose latency is dominated
-by generated output. The 60-second bound in NFR-02 is what gives FR-2.7 ("retry failed
-processing attempts") a definition of failure.
+Parsing and scoring are both language-model calls, and carry the same bounds for that reason.
+Turning a resume into structured fields was originally specified as deterministic text
+extraction, at 5 seconds; it is not, because resume layout is chosen by the candidate and cannot
+be specified in advance. The 60-second bound in NFR-01 and NFR-02 is what gives FR-2.7 ("retry
+failed processing attempts") a definition of failure on each of them.
+
+They remain separate requirements because they are separately cached and separately paid for: a
+profile is extracted once per resume, while a score is produced once per resume per job opening.
 
 NFR-04 is architecturally decisive: it requires batch submission to be acknowledged before the
 work is done, which is what makes the asynchronous design in FR-2.2 a requirement rather than a

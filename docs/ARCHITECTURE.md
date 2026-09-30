@@ -81,7 +81,7 @@ already debug, and named the AI Service call as the first place to revisit.
 **That revisit has happened.** ADR-007 makes the AI Service gRPC, on three properties that separate
 it from every other boundary: it carries the highest call volume in the system — once per resume,
 not once per batch — its contract is the narrowest and least forgiving, and it is the boundary most
-likely to be crossed by two different languages. Its three operations are defined in a `.proto` and
+likely to be crossed by two different languages. Its operations are defined in a `.proto` and
 both callers use a generated client, so a renamed field fails at build time rather than producing a
 score with the justification quietly missing. The service is internal and never exposed through the
 gateway, which is what makes a protocol nobody can read in a network tab acceptable here and

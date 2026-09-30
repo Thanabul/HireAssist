@@ -1,0 +1,30 @@
+{
+  "profile": {
+    "candidateId": "cand-7781",
+    "workHistory": [
+      {
+        "title": "Backend Engineer",
+        "organisation": "Acme Payments",
+        "start": "2021-03",
+        "end": "",
+        "summary": "Built and operated payment services in Go on PostgreSQL; led the migration to partitioned ledgers."
+      }
+    ],
+    "skills": ["Go", "Python", "PostgreSQL", "Kubernetes", "gRPC"],
+    "education": [
+      {
+        "qualification": "BSc Computer Science",
+        "institution": "Chulalongkorn University",
+        "completed": "2019"
+      }
+    ],
+    "additionalText": "Maintains an open-source CLI with 400 stars."
+  },
+  "criteria": [
+    { "id": "cr-1", "text": "3+ years production backend experience", "mustHave": true },
+    { "id": "cr-2", "text": "Strong SQL and relational data modelling", "mustHave": false, "weight": 40 },
+    { "id": "cr-3", "text": "Experience operating distributed systems", "mustHave": false, "weight": 60 }
+  ],
+  "emphasis": "more system design",
+  "language": "LANGUAGE_ENGLISH"
+}

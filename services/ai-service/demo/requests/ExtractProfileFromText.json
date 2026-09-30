@@ -1,0 +1,5 @@
+{
+  "candidateId": "cand-7781",
+  "resumeText": "Somchai Jaidee\nsomchai.j@example.com | 081-234-5678 | Bangkok\n\nSUMMARY\nBackend engineer, 5 years, payments and ledger systems.\n\nEXPERIENCE\n\nBackend Engineer — Acme Payments Co., Ltd.\nMar 2021 – Present\n- Built and operated payment services in Go on PostgreSQL\n- Designed the partitioned ledger schema and led the migration\n- Owned the service's on-call rotation\n\nSoftware Engineer — Bangkok Digital\nJun 2019 – Feb 2021\n- Internal tooling in Python\n- Some Kubernetes for deployment\n\nEDUCATION\nBSc Computer Science, Chulalongkorn University, 2019\n\nSKILLS\nGo, Python, PostgreSQL, Kubernetes, gRPC, Redis\n\nOTHER\nMaintains an open-source CLI with 400 stars.\nAWS Certified Solutions Architect (2023).\n",
+  "language": "LANGUAGE_ENGLISH"
+}

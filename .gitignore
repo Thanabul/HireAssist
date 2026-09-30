@@ -94,3 +94,16 @@ load-test-results/
 *.pdf.tmp
 ~$*.docx
 ~$*.pptx
+
+# ── Python / uv ───────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.env
+
+# Generated from the .proto at build time — regenerate with `make proto`,
+# never commit. The contract is proto/, not the stubs.
+services/*/src/*/gen/

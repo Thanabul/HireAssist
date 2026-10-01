@@ -1,0 +1,202 @@
+syntax = "proto3";
+
+package hireassist.ai.v1;
+
+// The AI Service is the only component that calls a language model (ADR-004).
+// It is reached over gRPC (ADR-007) and is never exposed through the API
+// gateway. Callers ask for a domain answer — criteria, a score, questions —
+// never for a completion, so the provider, the model name, the prompt and the
+// token budget appear in no other service's contract.
+//
+// Field numbers are never reused and fields are never removed, only
+// deprecated, so an older client keeps working against a newer server.
+service AiService {
+  // UC-1. Turn a free-text role description into a proposed title and a
+  // weighted criteria set for a Recruiter to review and correct.
+  rpc DeriveCriteriaFromDescription(DeriveCriteriaFromDescriptionRequest)
+      returns (DeriveCriteriaFromDescriptionResponse);
+
+  // UC-2. Turn the text of one resume into a structured candidate profile.
+  // Called once per resume, before scoring, and its result is cached by the
+  // caller — a profile is extracted once and scored against many openings.
+  //
+  // This is the only operation that receives unstructured resume text, and
+  // therefore the only one that sees the attributes excluded from scoring.
+  // Dropping them is part of its job.
+  rpc ExtractProfileFromText(ExtractProfileFromTextRequest)
+      returns (ExtractProfileFromTextResponse);
+
+  // UC-2. Score one candidate profile against one job opening's criteria.
+  // The highest-volume call in the system: once per resume per opening.
+  rpc ScoreAgainstCriteria(ScoreAgainstCriteriaRequest)
+      returns (ScoreAgainstCriteriaResponse);
+
+  // UC-3. Generate interview questions from the intersection of a candidate's
+  // profile and the job's criteria.
+  rpc GenerateInterviewQuestions(GenerateInterviewQuestionsRequest)
+      returns (GenerateInterviewQuestionsResponse);
+}
+
+// ── Shared ──────────────────────────────────────────────────────────────────
+
+enum Language {
+  LANGUAGE_UNSPECIFIED = 0;
+  LANGUAGE_THAI = 1;
+  LANGUAGE_ENGLISH = 2;
+}
+
+// One screening criterion belonging to a job opening. Criteria are owned by
+// the Hiring Service; this service never stores them.
+message Criterion {
+  string id = 1;
+  string text = 2;
+  bool must_have = 3;
+  // Relative weight within the opening. Ignored when must_have is true.
+  uint32 weight = 4;
+  // Optional grouping, e.g. "experience", "skills", "education".
+  string category = 5;
+}
+
+// A resume in structured form, produced by ExtractProfileFromText.
+//
+// Turning resume text into these fields is a model call: resume layout is
+// chosen by the candidate and cannot be specified in advance, so a rule-based
+// parser mis-associates silently and a plausible wrong profile is scored with
+// confidence. Extracting the *text* from the PDF stays deterministic and stays
+// in the Resume Processing Service — this service never receives a file.
+//
+// The fields excluded from scoring have no place to live here: there is no
+// name, contact detail, gender, age, marital status, religion, nationality or
+// photograph, and extraction is instructed not to carry them into
+// additional_text either.
+message CandidateProfile {
+  string candidate_id = 1;
+  repeated WorkExperience work_history = 2;
+  repeated string skills = 3;
+  repeated Education education = 4;
+  // Resume text that did not fit the structured fields above.
+  string additional_text = 5;
+}
+
+message WorkExperience {
+  string title = 1;
+  string organisation = 2;
+  string start = 3;  // ISO 8601 date or year; free-form as it appears
+  string end = 4;    // empty when current
+  string summary = 5;
+}
+
+message Education {
+  string qualification = 1;
+  string institution = 2;
+  string completed = 3;
+}
+
+// Identifies exactly which model produced an answer, so a justification shown
+// to a Recruiter months ago can still be accounted for (ADR-004).
+message ModelAttribution {
+  string provider = 1;
+  string model = 2;
+  string prompt_version = 3;
+}
+
+// ── DeriveCriteriaFromDescription ───────────────────────────────────────────
+
+message DeriveCriteriaFromDescriptionRequest {
+  string description = 1;
+  Language language = 2;
+}
+
+message DeriveCriteriaFromDescriptionResponse {
+  string proposed_title = 1;
+  repeated Criterion criteria = 2;
+  // Parts of the description the model could not interpret, surfaced so the
+  // Recruiter can fill them in by hand rather than being told nothing.
+  repeated string uninterpreted = 3;
+  ModelAttribution attribution = 4;
+}
+
+// ── ExtractProfileFromText ──────────────────────────────────────────────────
+
+message ExtractProfileFromTextRequest {
+  // Assigned by the caller. The Resume Processing Service owns candidate
+  // identity; this service never invents an id.
+  string candidate_id = 1;
+  // Text extracted from the resume file, in reading order where the extractor
+  // could determine one.
+  string resume_text = 2;
+  Language language = 3;
+}
+
+message ExtractProfileFromTextResponse {
+  CandidateProfile profile = 1;
+  ModelAttribution attribution = 2;
+}
+
+// ── ScoreAgainstCriteria ────────────────────────────────────────────────────
+
+message ScoreAgainstCriteriaRequest {
+  CandidateProfile profile = 1;
+  // The criteria snapshot taken when the batch was submitted, not the
+  // opening's current criteria — a mid-batch edit must not change what an
+  // already-scored resume was judged against.
+  repeated Criterion criteria = 2;
+  Language language = 3;
+}
+
+message ScoreAgainstCriteriaResponse {
+  // Weighted total, 0-100.
+  uint32 score = 1;
+  // True when every must-have criterion is met. When false the candidate is
+  // marked not qualified and unmet_must_have_ids says which caused it.
+  bool meets_must_haves = 2;
+  repeated string unmet_must_have_ids = 3;
+  repeated CriterionAssessment assessments = 4;
+  // Short written justification citing evidence from the resume. A score
+  // without one is not an acceptable output.
+  string justification = 5;
+  ModelAttribution attribution = 6;
+}
+
+message CriterionAssessment {
+  string criterion_id = 1;
+  bool met = 2;
+  uint32 score = 3;
+  // The words in the resume this judgement rests on.
+  string evidence = 4;
+}
+
+// ── GenerateInterviewQuestions ──────────────────────────────────────────────
+
+message GenerateInterviewQuestionsRequest {
+  CandidateProfile profile = 1;
+  repeated Criterion criteria = 2;
+  // Optional steer for a regeneration, e.g. "more system design".
+  string emphasis = 3;
+  Language language = 4;
+}
+
+message GenerateInterviewQuestionsResponse {
+  repeated InterviewQuestion questions = 1;
+  ModelAttribution attribution = 2;
+}
+
+message InterviewQuestion {
+  string text = 1;
+  // The criterion this question tests, so the interviewer knows why it is
+  // being asked.
+  string criterion_id = 2;
+  // The resume claim or gap it was derived from.
+  string source_evidence = 3;
+  QuestionKind kind = 4;
+}
+
+enum QuestionKind {
+  QUESTION_KIND_UNSPECIFIED = 0;
+  // Probes a claim the resume makes.
+  QUESTION_KIND_RESUME_CLAIM = 1;
+  // Addresses a must-have the resume did not evidence.
+  QUESTION_KIND_MUST_HAVE_GAP = 2;
+  // Role-specific depth drawn from the criteria.
+  QUESTION_KIND_ROLE_DEPTH = 3;
+}

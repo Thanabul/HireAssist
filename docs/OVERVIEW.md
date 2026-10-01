@@ -148,8 +148,9 @@ already written.
 ```
 worker claims a work row (SELECT … FOR UPDATE SKIP LOCKED)
    → ObjectStorage.fetchResumeFile()
-   → parse the PDF in process                 ← deterministic, not a model call
-   → AI.scoreAgainstCriteria() → LLM provider
+   → extract text from the PDF in process     ← deterministic; no model sees a file
+   → AI.extractProfileFromText() → LLM provider   ← cached: once per resume
+   → AI.scoreAgainstCriteria() → LLM provider     ← once per resume per opening
    → persist the profile and the scoring output
    → Hiring.reportScreeningResult()           ← upsert on (batch_id, resume_id)
    → result streams to the ranked list

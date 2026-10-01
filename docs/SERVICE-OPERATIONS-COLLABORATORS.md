@@ -8,8 +8,8 @@ Service, which are gRPC** (ADR-007). There is no message broker. Only the gRPC c
 |---|---|---|
 | **Identity Service**<br><br>*owns: accounts, memberships,<br>roles, sessions*<br><br>UC-0 · UC-6 | `authenticateMember()`<br>`validateSession()`<br>`getMemberRole()`<br>`createMember()`<br>`removeMember()`<br>`changeMemberRole()` | *(none)* |
 | **Hiring Service**<br><br>*owns: job openings, criteria,<br>screening batches and entry status,<br>scores and overrides, shortlist<br>decisions, interview guides*<br><br>UC-1 · UC-2 · UC-3 | `createJobOpening()`<br>`reviseScreeningCriteria()`<br>`getScreeningCriteria()`<br>`getJobOpening()`<br>`pauseOpening()`<br>`resumeOpening()`<br>`closeOpening()`<br>`submitScreeningBatch()`<br>`getBatchStatus()`<br>`getRankedResults()`<br>`overrideScore()`<br>`shortlistCandidate()`<br>`generateInterviewGuide()`<br>`reviseGuide()`<br>`getInterviewGuide()`<br>`recordInterviewNote()`<br>`reportScreeningResult()`<br>`eraseHiringData()` | **Object Storage Adapter**<br>　`storeResumeFile()`<br>**Resume Processing Service**<br>　`submitResumeForScreening()`<br>　　*(carries the criteria snapshot)*<br>　`getCandidateProfile()`<br>**AI Service** *(gRPC)*<br>　`deriveCriteriaFromDescription()`<br>　`generateInterviewQuestions()`<br>**Compliance & Insights Service**<br>　`recordPipelineEvent()`<br>**Email Adapter**<br>　`sendEmail()` |
-| **Resume Processing Service**<br><br>*owns: candidate identity and<br>collection date, candidate profiles,<br>parsed resume text, per-criterion<br>scoring output and justifications*<br><br>UC-2 (per-resume work) | `submitResumeForScreening()`<br>`getCandidateProfile()`<br>`listCandidateProfiles()`<br>`listUnparsableResumes()`<br>`eraseCandidateProfile()` | **Object Storage Adapter**<br>　`fetchResumeFile()`<br>**AI Service** *(gRPC)*<br>　`scoreAgainstCriteria()`<br>**Hiring Service**<br>　`reportScreeningResult()` *(callback)* |
-| **AI Service**<br><br>*owns: prompts and model credentials<br>— no domain data*<br><br>UC-1 · UC-2 · UC-3 | `deriveCriteriaFromDescription()`<br>`scoreAgainstCriteria()`<br>`generateInterviewQuestions()` | **LLM Adapter**<br>　`complete()` |
+| **Resume Processing Service**<br><br>*owns: candidate identity and<br>collection date, candidate profiles,<br>parsed resume text, per-criterion<br>scoring output and justifications*<br><br>UC-2 (per-resume work) | `submitResumeForScreening()`<br>`getCandidateProfile()`<br>`listCandidateProfiles()`<br>`listUnparsableResumes()`<br>`eraseCandidateProfile()` | **Object Storage Adapter**<br>　`fetchResumeFile()`<br>**AI Service** *(gRPC)*<br>　`extractProfileFromText()`<br>　`scoreAgainstCriteria()`<br>**Hiring Service**<br>　`reportScreeningResult()` *(callback)* |
+| **AI Service**<br><br>*owns: prompts and model credentials<br>— no domain data*<br><br>UC-1 · UC-2 · UC-3 | `deriveCriteriaFromDescription()`<br>`extractProfileFromText()`<br>`scoreAgainstCriteria()`<br>`generateInterviewQuestions()` | **LLM Adapter**<br>　`complete()` |
 | **Compliance & Insights Service**<br><br>*owns: retention policy, pipeline<br>metrics, erasure and access audit logs*<br><br>UC-4 · UC-5 | `setRetentionPolicy()`<br>`evaluateRetention()`<br>`listHeldExpiries()`<br>`resolveHeldExpiry()`<br>`eraseCandidate()`<br>`getErasureAudit()`<br>`getPipelineDashboard()`<br>`evaluateStaleness()`<br>`recordPipelineEvent()`<br>`recordAuthorisationRejected()` | **Hiring Service**<br>　`eraseHiringData()`<br>**Resume Processing Service**<br>　`eraseCandidateProfile()`<br>　`listCandidateProfiles()`<br>**Email Adapter**<br>　`sendEmail()` |
 
 **API Gateway** is the entry point, not a domain service. It terminates TLS, routes, rate-limits,
@@ -56,9 +56,12 @@ erased from, and a second copy that can disagree with the first. The ranked list
 unaffected either way — score and must-have check are Hiring's own columns, so the list never
 waits on a document read (NFR-03). Only opening an individual candidate does.
 
-**Profile extraction is deterministic, not a model call.** Resume Processing parses the PDF into a
-normalised profile in-process, then calls the model only to score it. ADR-004 defines exactly three
-model operations, and none of them is field extraction.
+**Profile extraction is a model call; text extraction is not.** Resume Processing turns the PDF
+into text in process — no model ever receives a file — and then asks the AI Service to structure
+that text into a normalised profile before asking it to score the profile. ADR-008 records why:
+resume layout is chosen by the candidate, so a rule-based parser mis-associates silently, and a
+plausible wrong profile is scored with confidence. The profile is extracted once per resume and
+stored; scoring happens once per resume per job opening.
 
 **The dashboard is a projection, not a query.** Compliance & Insights maintains its own view of
 open positions from the `recordPipelineEvent()` calls Hiring makes as things happen, and does not

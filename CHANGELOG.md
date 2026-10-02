@@ -15,6 +15,13 @@ what a session decided, and rewriting it destroys the record of when and why som
 
 ---
 
+## 2026-10-02 20:23 — README lists the Identity Service
+
+- `services/identity/` added to the README's documentation table beside the AI Service, the
+  pattern that service set, so a reader finds every implemented service in one place.
+
+---
+
 ## 2026-10-01 — ADR-008: turning a resume into a profile is a model call
 
 - **ADR-008 recorded.** Rule-based structuring of a resume was rejected because the layout is

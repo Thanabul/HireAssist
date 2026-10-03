@@ -1,0 +1,237 @@
+openapi: 3.0.3
+info:
+  title: HireAssist Resume Processing Service
+  version: 1.0.0
+  description: |
+    Owns candidate profiles (ADR-001). Stores them in MongoDB (ADR-003).
+    Exposes REST; only the AI Service speaks gRPC (ADR-007).
+    This document is the contract for the service's REST boundary (ADR-005).
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: http://resume-processing.hireassist.svc
+    description: In-cluster address (Kubernetes ClusterIP Service)
+
+paths:
+  /candidates:
+    post:
+      summary: Create a candidate profile
+      operationId: createCandidateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateProfileCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      summary: List candidate profiles
+      operationId: listCandidateProfiles
+      parameters:
+        - name: jobOpeningId
+          in: query
+          required: false
+          description: Only candidates for this job opening, e.g. job-001
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Candidate profiles, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profiles:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CandidateProfile"
+
+  /candidates/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Candidate id, e.g. cand-001
+        schema:
+          type: string
+          pattern: "^cand-\\d{3}$"
+    get:
+      summary: Get one candidate profile
+      operationId: getCandidateProfile
+      responses:
+        "200":
+          description: The candidate profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update a candidate profile (only the fields sent are changed)
+      operationId: updateCandidateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateProfileUpdate"
+      responses:
+        "200":
+          description: The updated candidate profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Erase a candidate profile
+      operationId: eraseCandidateProfile
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /healthz:
+    get:
+      summary: Liveness probe
+      operationId: health
+      responses:
+        "200":
+          description: The process is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /readyz:
+    get:
+      summary: Readiness probe (ready once MongoDB is connected)
+      operationId: ready
+      responses:
+        "200":
+          description: Ready to take traffic
+        "503":
+          description: Not ready yet
+
+components:
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Propagated on every call; generated if absent and echoed in the response.
+      schema:
+        type: string
+
+  schemas:
+    CandidateProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: cand-001
+        workspace_id:
+          type: string
+          example: ws-demo
+        job_opening_id:
+          type: string
+          example: job-001
+        full_name:
+          type: string
+          example: Thanabul Parodom
+        email:
+          type: string
+          format: email
+          example: thanabul.p@example.com
+        skills:
+          type: array
+          items:
+            type: string
+          example: [Java, Spring Boot, PostgreSQL]
+        resume_text:
+          type: string
+          example: 4 years as a backend developer at a fintech startup in Bangkok
+        created_at:
+          type: string
+          format: date-time
+
+    CandidateProfileCreate:
+      type: object
+      required: [workspace_id, job_opening_id, full_name, email]
+      properties:
+        workspace_id:
+          type: string
+        job_opening_id:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        skills:
+          type: array
+          items:
+            type: string
+        resume_text:
+          type: string
+
+    CandidateProfileUpdate:
+      type: object
+      description: workspace_id and job_opening_id cannot be changed.
+      properties:
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        skills:
+          type: array
+          description: Replaces the whole list.
+          items:
+            type: string
+        resume_text:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    NotFound:
+      description: Candidate profile not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Missing or invalid fields
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

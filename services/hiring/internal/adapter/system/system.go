@@ -1,0 +1,22 @@
+// Package system provides production implementations of the use case's Clock and IDGenerator.
+package system
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"time"
+)
+
+// Clock reads the wall clock, in UTC.
+type Clock struct{}
+
+func (Clock) Now() time.Time { return time.Now().UTC() }
+
+// RandomIDs issues 128-bit random job opening ids, prefixed "jo_".
+type RandomIDs struct{}
+
+func (RandomIDs) NewID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b) // crypto/rand.Read never returns an error (Go 1.24+)
+	return "jo_" + hex.EncodeToString(b)
+}

@@ -1,0 +1,47 @@
+package system_test
+
+import (
+	"regexp"
+	"testing"
+	"time"
+
+	"github.com/frngrit/HireAssist/services/hiring/internal/adapter/system"
+	"github.com/frngrit/HireAssist/services/hiring/internal/usecase"
+)
+
+var (
+	_ usecase.Clock       = system.Clock{}
+	_ usecase.IDGenerator = system.RandomIDs{}
+)
+
+// Opening dates are recorded in UTC, so every service and report agrees on the date.
+func TestClock_NowIsCurrentUTC(t *testing.T) {
+	before := time.Now()
+
+	got := system.Clock{}.Now()
+
+	if got.Location() != time.UTC {
+		t.Errorf("Location = %v, want UTC", got.Location())
+	}
+	if got.Before(before.Add(-time.Second)) || got.After(time.Now().Add(time.Second)) {
+		t.Errorf("Now = %v, not the current time", got)
+	}
+}
+
+// Job opening ids are unique and unguessable: they appear in URLs, and a sequential id
+// would let anyone enumerate every opening.
+func TestRandomIDs_UniqueAndWellFormed(t *testing.T) {
+	format := regexp.MustCompile(`^jo_[0-9a-f]{32}$`)
+	seen := map[string]bool{}
+
+	for i := 0; i < 1000; i++ {
+		id := system.RandomIDs{}.NewID()
+		if !format.MatchString(id) {
+			t.Fatalf("id %q does not match %s", id, format)
+		}
+		if seen[id] {
+			t.Fatalf("duplicate id %q", id)
+		}
+		seen[id] = true
+	}
+}

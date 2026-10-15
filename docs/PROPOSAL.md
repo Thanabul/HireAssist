@@ -284,7 +284,8 @@ recorded, and becomes the target that UC-2 screens resumes against. From there t
 controls its lifecycle: an opening can be **paused** when hiring is put on hold — which also
 suspends the staleness alerts in UC-4, so those alerts stay meaningful — **resumed**, or
 **closed** with a recorded outcome — *filled* when someone is hired, *cancelled* when the role
-is abandoned.
+is abandoned. Closing is final: a closed opening is not reopened, and its outcome is not rewritten,
+because that outcome is what UC-4's pipeline metrics count.
 
 **Main flow**
 1. Recruiter opens "New Job Opening" and pastes a free-text description (Thai or English).
@@ -689,14 +690,14 @@ and lawfully, turning a dead archive into a live sourcing channel.
 
 ## Functional Requirements
 
-The full set of 49 functional requirements is maintained in
+The full set of 50 functional requirements is maintained in
 **[FUNCTIONAL-REQUIREMENTS.md](FUNCTIONAL-REQUIREMENTS.md)**, grouped by the use case each one
 serves and numbered `FR-<use case>.<n>` for traceability.
 
 | Use case | Requirements | Count |
 |---|---|---|
 | UC-0 Sign in | FR-0.1 – FR-0.5 | 5 |
-| UC-1 Create a job opening from natural-language requirements | FR-1.1 – FR-1.8 | 8 |
+| UC-1 Create a job opening from natural-language requirements | FR-1.1 – FR-1.9 | 9 |
 | UC-2 Batch-screen resumes against a job opening | FR-2.1 – FR-2.12 | 12 |
 | UC-3 Generate candidate-specific interview questions | FR-3.1 – FR-3.5 | 5 |
 | UC-4 Monitor hiring pipeline and stale positions | FR-4.1 – FR-4.4, FR-4.5, FR-4.6 | 6 |

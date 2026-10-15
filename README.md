@@ -32,7 +32,7 @@ Term project for **Software Architecture**, Chulalongkorn University.
 | Document | What it is |
 |---|---|
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | **The submission document.** Project description, target customers, use cases, requirements, ADRs. Source of truth. |
-| [docs/FUNCTIONAL-REQUIREMENTS.md](docs/FUNCTIONAL-REQUIREMENTS.md) | 44 functional requirements, traced to the use case each serves. |
+| [docs/FUNCTIONAL-REQUIREMENTS.md](docs/FUNCTIONAL-REQUIREMENTS.md) | 50 functional requirements, traced to the use case each serves. |
 | [docs/NON-FUNCTIONAL-REQUIREMENTS.md](docs/NON-FUNCTIONAL-REQUIREMENTS.md) | 17 non-functional requirements, grouped by quality attribute. |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture diagram (version 1): the components, what each owns, and how to read the picture. |
 | [docs/diagrams/](docs/diagrams/) | Diagrams as code — the use case diagram (PlantUML source + rendered SVG) and the architecture diagram (hand-laid SVG). |
@@ -77,15 +77,21 @@ index and the decisions not yet taken in [`docs/adr/INDEX.md`](docs/adr/INDEX.md
 
 ## Repository status
 
-**Documentation only.** No application code yet.
+**Documentation, plus the first slice of code.** The Hiring Service's job opening operations
+(UC-1: create, read, list, revise criteria, pause, resume, close) exist in Go under
+[`services/hiring/`](services/hiring/), in memory only — see its README.
 
-The intention is for this to become a monorepo once implementation starts, with services
-living alongside these documents. Structure will be decided in an ADR before any code lands.
+The repository is becoming a monorepo, with services living alongside these documents. The
+repository-structure ADR has **not** been written yet, and the Hiring Service's language is the
+owner's choice under ADR-005 (still *Proposed*); `services/<name>/` is a working layout, not a
+decision.
 
 ```
 hire-assist/
 ├── README.md
 ├── .gitignore
+├── services/
+│   └── hiring/              # Hiring Service (Go) — job openings
 └── docs/
     ├── PROPOSAL.md          # submission document
     ├── CONTEXT.md           # working notes

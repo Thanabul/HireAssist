@@ -52,6 +52,7 @@ code enforces.
 | FR-1.6 | The system shall record an expected time-to-fill for each job opening. |
 | FR-1.7 | The system shall store a confirmed job opening in the open state, recording the date it was opened and retaining the original free-text description. |
 | FR-1.8 | The system shall allow a Recruiter or Admin to pause and resume a job opening, and to close it with a recorded outcome of either *filled* or *cancelled*. |
+| FR-1.9 | The system shall treat a closed job opening as final: it cannot be paused, resumed or closed again, its criteria cannot be revised, and its recorded outcome cannot be changed. |
 
 ## UC-2 — Batch-screen resumes against a job opening
 
@@ -116,4 +117,4 @@ code enforces.
 
 ---
 
-**49 requirements** — UC-0: 5 · UC-1: 8 · UC-2: 12 · UC-3: 5 · UC-4: 6 · UC-5: 8 · UC-6: 5.
+**50 requirements** — UC-0: 5 · UC-1: 9 · UC-2: 12 · UC-3: 5 · UC-4: 6 · UC-5: 8 · UC-6: 5.

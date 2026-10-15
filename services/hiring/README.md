@@ -2,14 +2,38 @@
 
 The recruiter-facing hiring record. This first slice covers **job openings** (UC-1): the
 operations `createJobOpening()`, `getJobOpening()`, listing, `reviseScreeningCriteria()`,
-`pauseOpening()`, `resumeOpening()` and `closeOpening()` from the SOC table. Storage is in memory,
-so data is lost on restart. Go 1.25; the one dependency is `kin-openapi`, used only by the
-contract test.
+`pauseOpening()`, `resumeOpening()` and `closeOpening()` from the SOC table. Job openings are
+stored in PostgreSQL (ADR-003). Go 1.25; dependencies are `pgx` (the PostgreSQL driver) and
+`kin-openapi`, used only by the contract test.
+
+## Running
+
+From the repository root, `docker compose up --build` starts PostgreSQL and the service on
+`localhost:8080`. If port 5432 is already taken on your machine, set `POSTGRES_PORT` to another
+port, for example `POSTGRES_PORT=55432 docker compose up --build`.
+
+| Variable | Meaning |
+|---|---|
+| `PORT` | HTTP port, default `8080` |
+| `DATABASE_URL` | PostgreSQL connection URL. **Unset means in-memory storage**, lost on restart: fine for a quick `go run`, never for anything you want to keep |
+
+On startup, the service connects and applies `internal/adapter/postgres/schema.sql`. If the
+database cannot be reached, startup fails rather than the first request. Every statement in the
+schema is idempotent (`CREATE … IF NOT EXISTS`). That is a deliberate stop-gap. Its first
+incompatible change needs a real migration tool, which has not been chosen yet.
+
+## Testing
 
 ```sh
-go test -race ./...          # the whole suite
-PORT=8080 go run ./cmd/hiring
+go test -race ./...          # unit + contract tests; PostgreSQL tests are skipped
+
+# with the compose database running, include the PostgreSQL tests:
+HIRING_TEST_DATABASE_URL='postgres://hireassist:hireassist@localhost:5432/hiring_test?sslmode=disable' \
+  go test -race ./...
 ```
+
+The PostgreSQL tests truncate their tables. That is why they use `hiring_test`, a separate
+database that compose creates beside `hiring`, and never the one the running service uses.
 
 ## Layout: clean architecture, dependencies point inward
 
@@ -19,14 +43,17 @@ cmd/hiring/            main: reads PORT, starts and gracefully stops the server
 internal/app/          composition root — the only place concrete adapters are chosen and injected
 internal/adapter/
   httpapi/             REST adapter: HTTP ⇄ use case, business errors ⇄ status codes
-  memory/              in-memory JobOpeningRepository (stand-in for PostgreSQL)
-  system/              wall Clock (UTC) and random, unguessable ids
+  postgres/            PostgreSQL JobOpeningRepository + schema.sql — the system of record
+  memory/              in-memory JobOpeningRepository, used when DATABASE_URL is unset
+  system/              wall Clock (UTC, microseconds — what PostgreSQL stores) and random ids
 internal/usecase/      application operations, and the ports they need (repository, clock, ids)
 internal/domain/       JobOpening, Criterion and their rules — no dependencies
 ```
 
-The use case depends only on interfaces it declares itself. Replacing the in-memory store with
-PostgreSQL means writing one adapter and changing one line in `internal/app`.
+The use case depends only on interfaces it declares itself. `internal/app` picks PostgreSQL or
+memory from `DATABASE_URL`, and nothing else knows which one it got. A job opening is one row in
+`job_openings`, and each of its criteria is one row in `job_opening_criteria`, kept in order.
+`Save` replaces the opening and its criteria in one transaction.
 
 ## HTTP API
 
@@ -67,5 +94,9 @@ forbids (FR-1.9: a closed opening is final), and 500 anything unexpected, with n
   gRPC adapter to the AI Service (ADR-007).
 - **`recordPipelineEvent()`** — reporting openings to the dashboard. The docs say this push needs
   an ADR before it is built.
-- **Role enforcement** (FR-0.4) and the **PostgreSQL** adapter (ADR-003).
+- **Role enforcement** (FR-0.4).
+- **A readiness endpoint** that checks the database (ADR-005 rule 4 asks for one; only `/healthz`
+  exists).
+- **A migration tool.** The schema is applied idempotently at startup until the first change that
+  cannot be expressed that way.
 - Clients generated from the spec — there is no consumer yet.

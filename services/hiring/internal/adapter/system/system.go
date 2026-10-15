@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// Clock reads the wall clock, in UTC.
+// Clock reads the wall clock, in UTC, to the microsecond — the precision PostgreSQL stores.
 type Clock struct{}
 
-func (Clock) Now() time.Time { return time.Now().UTC() }
+func (Clock) Now() time.Time { return time.Now().UTC().Truncate(time.Microsecond) }
 
 // RandomIDs issues 128-bit random job opening ids, prefixed "jo_".
 type RandomIDs struct{}

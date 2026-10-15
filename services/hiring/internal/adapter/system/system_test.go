@@ -28,6 +28,16 @@ func TestClock_NowIsCurrentUTC(t *testing.T) {
 	}
 }
 
+// Times carry no more precision than PostgreSQL stores, so an opening reads back exactly as
+// it was created.
+func TestClock_NowIsWholeMicroseconds(t *testing.T) {
+	got := system.Clock{}.Now()
+
+	if got.Nanosecond()%1000 != 0 {
+		t.Errorf("Now = %v, has sub-microsecond precision", got)
+	}
+}
+
 // Job opening ids are unique and unguessable: they appear in URLs, and a sequential id
 // would let anyone enumerate every opening.
 func TestRandomIDs_UniqueAndWellFormed(t *testing.T) {

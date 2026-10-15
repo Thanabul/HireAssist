@@ -17,14 +17,26 @@ import (
 func main() {
 	// Configuration comes from the environment (ADR-005 rule 4).
 	addr := ":" + envOr("PORT", "8080")
-	srv := &http.Server{
-		Addr:              addr,
-		Handler:           app.New(),
-		ReadHeaderTimeout: 5 * time.Second,
-	}
+	cfg := app.Config{DatabaseURL: os.Getenv("DATABASE_URL")}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	handler, closeService, err := app.New(ctx, cfg)
+	if err != nil {
+		slog.Error("startup failed", "err", err)
+		os.Exit(1)
+	}
+	defer closeService()
+	if cfg.DatabaseURL == "" {
+		slog.Warn("DATABASE_URL not set: storing job openings in memory, lost on restart")
+	}
+
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
 	go func() {
 		slog.Info("hiring service listening", "addr", addr)

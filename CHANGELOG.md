@@ -15,6 +15,15 @@ what a session decided, and rewriting it destroys the record of when and why som
 
 ---
 
+## 2026-10-15 19:52 — Hiring Service stores job openings in PostgreSQL
+
+- Job openings and their criteria now live in PostgreSQL, implementing ADR-003. Criteria are rows in their own table rather than a `jsonb` column, because ADR-003 puts weighted criteria in the system of record, where constraints enforce them. No new ADR: the store was already decided.
+- A root `docker-compose.yml` runs the Hiring Service with its database for local development. It is local tooling, not a deployment decision; ADR-005 rule 4's Kubernetes manifests are still to come. The Identity Service keeps its own compose file for now.
+- The schema is applied idempotently at startup, with no migration tool yet. That is enough until the first incompatible change.
+- Outstanding: whether the root compose file absorbs the other services; a readiness endpoint (ADR-005 rule 4); a migration tool.
+
+---
+
 ## 2026-10-03 — New architecture diagram; references repointed from SVG to PNG
 
 - **The architecture diagram is back in the repo** as `diagrams/sw-arch.drawio.png`, drawn in

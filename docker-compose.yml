@@ -1,0 +1,35 @@
+# Local development stack. `docker compose up --build` runs the Hiring Service against
+# PostgreSQL (ADR-003). Credentials here are for local use only; never reuse them elsewhere.
+name: hireassist
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hireassist
+      POSTGRES_PASSWORD: hireassist
+      POSTGRES_DB: hiring
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"   # set POSTGRES_PORT if 5432 is taken
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deploy/postgres/init-test-database.sql:/docker-entrypoint-initdb.d/init-test-database.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hireassist -d hiring"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  hiring:
+    build: ./services/hiring
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://hireassist:hireassist@postgres:5432/hiring?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

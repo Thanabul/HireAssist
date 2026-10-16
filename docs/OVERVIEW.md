@@ -111,13 +111,23 @@ the request is routed. A request above the caller's role stops at the Gateway, w
 ### UC-1 — Create a job opening
 
 ```
-Browser → Gateway → Hiring.createJobOpening()
+Browser → Gateway → Hiring.proposeJobOpening()
                     Hiring  → AI.deriveCriteriaFromDescription() → LLM provider
-                            ← proposed title and weighted criteria
-                    [Recruiter reviews and edits — the correction point]
+                            ← proposed title and weighted criteria, uninterpretable parts
+                    ← proposal (nothing stored)
+
+[Recruiter reviews and edits in the browser — the correction point]
+
+Browser → Gateway → Hiring.createJobOpening()      (confirmed title, criteria, time-to-fill)
                     Hiring  writes the opening and its criteria to PostgreSQL
                     Hiring  → Compliance.recordPipelineEvent()
 ```
+
+Two operations, because the review sits between them: FR-1.3 requires the proposal to be shown
+*before* the opening is created, and a request cannot stay open while a person edits. Proposing
+stores nothing, so an abandoned proposal leaves no trace. Creating makes no AI call, so a Recruiter
+who rejects the proposal or cannot get one (FR-1.5, flow 4a) still creates the opening by entering
+criteria manually.
 
 The review step is where a human corrects the model, before any resume has been scored against a
 wrong criterion.

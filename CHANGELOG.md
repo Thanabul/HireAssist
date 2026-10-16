@@ -15,6 +15,15 @@ what a session decided, and rewriting it destroys the record of when and why som
 
 ---
 
+## 2026-10-15 19:52 — Hiring Service stores job openings in PostgreSQL
+
+- Job openings and their criteria now live in PostgreSQL, implementing ADR-003. Criteria are rows in their own table rather than a `jsonb` column, because ADR-003 puts weighted criteria in the system of record, where constraints enforce them. No new ADR: the store was already decided.
+- A root `docker-compose.yml` runs the Hiring Service with its database for local development. It is local tooling, not a deployment decision; ADR-005 rule 4's Kubernetes manifests are still to come. The Identity Service keeps its own compose file for now.
+- The schema is applied idempotently at startup, with no migration tool yet. That is enough until the first incompatible change.
+- Outstanding: whether the root compose file absorbs the other services; a readiness endpoint (ADR-005 rule 4); a migration tool.
+
+---
+
 ## 2026-10-03 — New architecture diagram; references repointed from SVG to PNG
 
 - **The architecture diagram is back in the repo** as `diagrams/sw-arch.drawio.png`, drawn in
@@ -39,10 +48,23 @@ what a session decided, and rewriting it destroys the record of when and why som
 
 Outstanding: the diagram labels the trigger *Scheduler* while every document calls it the
 *System Scheduler*.
+
+---
+
 ## 2026-10-02 20:23 — README lists the Identity Service
 
 - `services/identity/` added to the README's documentation table beside the AI Service, the
   pattern that service set, so a reader finds every implemented service in one place.
+
+---
+
+## 2026-10-02 20:20 — OpenAPI contract for the Hiring Service
+
+- `services/hiring/api/openapi.yaml` written and enforced by a contract test that validates every request and response against it — ADR-005 rule 1 makes the spec authoritative; it came after the endpoints this time, so from here the spec changes first.
+- Swagger UI served at `/docs` as a developer convenience; whether the Gateway exposes it is undecided.
+- Added `listJobOpenings()` to the SOC table — the code serves a list and the table had no operation for it.
+- Pause, resume and close stay as POST actions, after comparing PUT and PATCH on a status field: they are rule-bound, non-idempotent business events (a repeat is 409, FR-1.9) that map one-to-one onto SOC operations; PUT would force a repeated pause to succeed silently. PUT stays for whole replacements (criteria).
+- Outstanding: the spec's location is provisional until the repository-structure ADR decides where shared OpenAPI definitions live.
 
 ---
 
@@ -109,6 +131,16 @@ Outstanding: the proposal's remaining sections are not in the export; the change
 
 ---
 
+## 2026-09-26 15:51 — Closed openings are final; first Hiring Service code
+
+- New FR-1.9: a closed job opening cannot be paused, resumed, closed again or have its criteria revised — its outcome is what UC-4's metrics count; UC-1's prose in PROPOSAL says the same, and the FR counts are now 45.
+- Criterion field named *classification*, not *priority*, following FR-1.2/FR-1.4 and the glossary — a must-have is a gate, not a ranking.
+- First code: the Hiring Service's job opening operations in Go under `services/hiring/`, built test-first, clean architecture with dependencies injected at one composition root; in memory only. Go is the owner's choice under ADR-005, which stays *Proposed*.
+- Deliberately not built: `proposeJobOpening()`, `recordPipelineEvent()` (OVERVIEW says it needs an ADR first), role enforcement, PostgreSQL.
+- Outstanding: the repository-structure ADR (README promised it before code landed; `services/<name>/` is a working layout until then); an OpenAPI contract for the endpoints (ADR-005 rule 1).
+
+---
+
 ## 2026-09-24 22:36 — ADR-009 proposed; *Member* confirmed as the Identity term
 
 - **ADR-009**, *Proposed*, answers the open candidate "session and token mechanism for UC-0": a
@@ -164,6 +196,15 @@ ASSIGNMENT.md still count 44 requirements, not 49; OVERVIEW's UC-0 and UC-6 flow
 temporary password; how long a removed member's email is kept is open. Parked for a team
 discussion: how calls made without a user — the scheduler, erasure, the screening callback — prove
 they come from our own services, which ADR-009 does not cover.
+
+---
+
+## 2026-09-24 18:09 — UC-1 split into propose and create
+
+- Added `Hiring.proposeJobOpening()` to the SOC table; OVERVIEW's UC-1 sequence now shows two operations instead of the AI call and the Recruiter's review inside `createJobOpening()` — one request cannot stay open while a person edits, and FR-1.3 needs the proposal to exist before the opening does.
+- `createJobOpening()` makes no AI call, so manual entry (FR-1.5, flow 4a) works when the AI Service is down.
+- Considered and rejected: the Gateway calling the AI Service directly — ADR-001, ADR-004 and ADR-007 keep it internal, and ADR-007's case for gRPC rests on no browser reaching it.
+- Outstanding: the Hiring Service Go code in `services/hiring/` is untracked in the docs until its first iteration lands; the repository-structure ADR and ADR-005's language choice are still open.
 
 ---
 
@@ -240,14 +281,6 @@ they come from our own services, which ADR-009 does not cover.
 
 **Outstanding:** bring the table in line with ADR-006 and the consent change; decide the OCR
 question; service ownership and the erasure verification pass are still open.
----
-
----
-
----
-
----
-
 ---
 
 ---

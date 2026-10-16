@@ -1,0 +1,300 @@
+openapi: 3.0.3
+info:
+  title: Hiring Service — Job Openings
+  version: 0.1.0
+  description: |
+    The Hiring Service's job opening operations (UC-1). This document is the contract
+    (ADR-005 rule 1): the server is tested against it, and clients are generated from it.
+
+    Lifecycle transitions (pause, resume, close) are POST actions, not PUT or PATCH on a status
+    field: each is a rule-bound business event that is not idempotent (a repeat is 409), and
+    each maps one-to-one onto an operation in the service operations table. PUT is used only
+    where a whole sub-resource is replaced, as with criteria.
+
+    Operation ids are the operation names in the service operations table. Not yet here:
+    `proposeJobOpening()` (the AI proposal step) and role enforcement (FR-0.4).
+
+    Location is provisional — where shared OpenAPI definitions live awaits the
+    repository-structure decision.
+servers:
+  - url: /
+tags:
+  - name: Job openings
+  - name: Operations
+
+paths:
+  /job-openings:
+    post:
+      operationId: createJobOpening
+      tags: [Job openings]
+      summary: Store a Recruiter-confirmed job opening as open
+      description: |
+        UC-1 step 6, FR-1.7. Takes criteria the Recruiter has already confirmed — from a
+        proposal or entered manually (FR-1.5) — so it makes no AI call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobOpeningDraft' }
+      responses:
+        '201':
+          description: Created, in the open state.
+          headers:
+            Location:
+              description: Path of the new job opening.
+              schema: { type: string, example: /job-openings/jo_3f9c0a6e1b2d4c5f8a7e6d5c4b3a2918 }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOpening' }
+        '400': { $ref: '#/components/responses/MalformedBody' }
+        '422': { $ref: '#/components/responses/BusinessRuleViolated' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      operationId: listJobOpenings
+      tags: [Job openings]
+      summary: List every job opening, in creation order
+      responses:
+        '200':
+          description: All job openings; an empty array when there are none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/JobOpening' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /job-openings/{id}:
+    parameters:
+      - $ref: '#/components/parameters/JobOpeningId'
+    get:
+      operationId: getJobOpening
+      tags: [Job openings]
+      summary: Get one job opening
+      responses:
+        '200':
+          description: The job opening.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOpening' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /job-openings/{id}/criteria:
+    parameters:
+      - $ref: '#/components/parameters/JobOpeningId'
+    put:
+      operationId: reviseScreeningCriteria
+      tags: [Job openings]
+      summary: Replace the screening criteria of an open or paused job opening
+      description: |
+        Resumes already handed to screening keep the criteria snapshot they were sent with
+        (NFR-15). A closed job opening's criteria cannot be revised (FR-1.9).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CriteriaSet' }
+      responses:
+        '200':
+          description: The job opening with its revised criteria.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOpening' }
+        '400': { $ref: '#/components/responses/MalformedBody' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StatusForbidsIt' }
+        '422': { $ref: '#/components/responses/BusinessRuleViolated' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /job-openings/{id}/pause:
+    parameters:
+      - $ref: '#/components/parameters/JobOpeningId'
+    post:
+      operationId: pauseOpening
+      tags: [Job openings]
+      summary: Put an open job opening on hold
+      description: FR-1.8. Pausing also suspends UC-4's staleness alerts for this opening.
+      responses:
+        '200':
+          description: The job opening, now paused.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOpening' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StatusForbidsIt' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /job-openings/{id}/resume:
+    parameters:
+      - $ref: '#/components/parameters/JobOpeningId'
+    post:
+      operationId: resumeOpening
+      tags: [Job openings]
+      summary: Reopen a paused job opening
+      description: FR-1.8.
+      responses:
+        '200':
+          description: The job opening, open again.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOpening' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StatusForbidsIt' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /job-openings/{id}/close:
+    parameters:
+      - $ref: '#/components/parameters/JobOpeningId'
+    post:
+      operationId: closeOpening
+      tags: [Job openings]
+      summary: Close a job opening with a recorded outcome
+      description: FR-1.8. Closing is final (FR-1.9) — the outcome is what UC-4's metrics count.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [outcome]
+              properties:
+                outcome: { $ref: '#/components/schemas/Outcome' }
+      responses:
+        '200':
+          description: The job opening, now closed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOpening' }
+        '400': { $ref: '#/components/responses/MalformedBody' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StatusForbidsIt' }
+        '422': { $ref: '#/components/responses/BusinessRuleViolated' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /healthz:
+    get:
+      operationId: health
+      tags: [Operations]
+      summary: Liveness check for the platform (ADR-005 rule 4)
+      responses:
+        '200':
+          description: The process is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+
+components:
+  parameters:
+    JobOpeningId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      example: jo_3f9c0a6e1b2d4c5f8a7e6d5c4b3a2918
+
+  schemas:
+    Classification:
+      type: string
+      enum: [must-have, nice-to-have]
+      description: |
+        A must-have is a gate — a candidate missing any is marked not qualified (FR-2.5).
+        A nice-to-have only contributes to the score through its weight.
+
+    Criterion:
+      type: object
+      additionalProperties: false
+      required: [name, classification, weight]
+      properties:
+        name: { type: string, minLength: 1, example: 3+ years of Go or Python }
+        classification: { $ref: '#/components/schemas/Classification' }
+        weight: { type: integer, minimum: 1, example: 5 }
+
+    CriteriaSet:
+      type: array
+      minItems: 1
+      items: { $ref: '#/components/schemas/Criterion' }
+
+    JobOpeningDraft:
+      type: object
+      additionalProperties: false
+      required: [title, criteria, expected_time_to_fill_days]
+      properties:
+        title: { type: string, minLength: 1, example: Backend Engineer }
+        description:
+          type: string
+          description: The original free-text role description, retained as written (FR-1.7).
+          example: Backend engineer, 3+ years, Go or Python, must have shipped with Kafka.
+        criteria: { $ref: '#/components/schemas/CriteriaSet' }
+        expected_time_to_fill_days:
+          type: integer
+          minimum: 1
+          description: FR-1.6. UC-4 flags the opening as stale once it has been open longer.
+          example: 45
+
+    Status:
+      type: string
+      enum: [open, paused, closed]
+
+    Outcome:
+      type: string
+      enum: [filled, cancelled]
+
+    JobOpening:
+      type: object
+      additionalProperties: false
+      required: [id, title, description, criteria, expected_time_to_fill_days, status, opened_at]
+      properties:
+        id: { type: string, example: jo_3f9c0a6e1b2d4c5f8a7e6d5c4b3a2918 }
+        title: { type: string }
+        description: { type: string }
+        criteria:
+          type: array
+          items: { $ref: '#/components/schemas/Criterion' }
+        expected_time_to_fill_days: { type: integer, minimum: 1 }
+        status: { $ref: '#/components/schemas/Status' }
+        outcome:
+          allOf: [{ $ref: '#/components/schemas/Outcome' }]
+          description: Present only once the job opening is closed.
+        opened_at: { type: string, format: date-time, description: UTC. }
+
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error: { type: string }
+
+  responses:
+    MalformedBody:
+      description: The body is not valid JSON, or has fields the contract does not define.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: No job opening has this id.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    StatusForbidsIt:
+      description: The job opening's current status does not allow this — e.g. it is closed (FR-1.9).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BusinessRuleViolated:
+      description: |
+        The request is well-formed but breaks a business rule: no criteria, a non-positive
+        weight, an unknown classification or outcome, no expected time-to-fill.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalError:
+      description: Unexpected failure. No internal detail is returned.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

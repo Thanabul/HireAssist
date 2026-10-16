@@ -1,0 +1,335 @@
+openapi: 3.0.3
+info:
+  title: HireAssist Resume Processing Service
+  version: 2.0.0
+  description: |
+    Owns candidate profiles and screening results (ADR-001). Stores them in
+    MongoDB (ADR-003). Exposes REST; only the AI Service speaks gRPC (ADR-007).
+    This document is the contract for the service's REST boundary (ADR-005).
+
+    Screening itself is asynchronous and does not go through REST: the Hiring
+    Service publishes `screening.requested` on RabbitMQ and receives
+    `screening.completed`. That contract is in MESSAGES.md.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: http://resume-processing.hireassist.svc
+    description: In-cluster address (Kubernetes ClusterIP Service)
+
+paths:
+  /candidates:
+    post:
+      summary: Create a candidate profile
+      operationId: createCandidateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateProfileCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      summary: List candidate profiles
+      operationId: listCandidateProfiles
+      parameters:
+        - name: jobOpeningId
+          in: query
+          required: false
+          description: Only candidates for this job opening, e.g. job-001
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Candidate profiles, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profiles:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CandidateProfile"
+
+  /candidates/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Candidate id, e.g. cand-001
+        schema:
+          type: string
+          pattern: "^cand-\\d{3,}$"
+    get:
+      summary: Get one candidate profile with every screening of it (UC-2 justification, UC-3 input)
+      operationId: getCandidateProfile
+      responses:
+        "200":
+          description: The candidate profile and its screening results, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CandidateProfile"
+                  - type: object
+                    properties:
+                      screenings:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ScreeningResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update a candidate profile (only the fields sent are changed)
+      operationId: updateCandidateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateProfileUpdate"
+      responses:
+        "200":
+          description: The updated candidate profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Erase a candidate profile and its screening results
+      operationId: eraseCandidateProfile
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /screenings:
+    get:
+      summary: Screening results of one batch, highest score first
+      operationId: listScreeningResults
+      parameters:
+        - name: batchId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Results for the batch
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batch_id:
+                    type: string
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ScreeningResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /healthz:
+    get:
+      summary: Liveness probe
+      operationId: health
+      responses:
+        "200":
+          description: The process is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /readyz:
+    get:
+      summary: Readiness probe (ready once MongoDB and RabbitMQ are both connected)
+      operationId: ready
+      responses:
+        "200":
+          description: Ready to take traffic
+        "503":
+          description: Not ready yet
+
+components:
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Propagated on every call; generated if absent and echoed in the response.
+      schema:
+        type: string
+
+  schemas:
+    CandidateProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: cand-001
+        job_opening_id:
+          type: string
+          example: job-001
+        full_name:
+          type: string
+          nullable: true
+          description: Only for profiles created by hand; the AI profile carries no name or contact details.
+        email:
+          type: string
+          format: email
+          nullable: true
+        skills:
+          type: array
+          items:
+            type: string
+          example: [Java, Spring Boot, PostgreSQL]
+        work_history:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkExperience"
+        education:
+          type: array
+          items:
+            $ref: "#/components/schemas/Education"
+        additional_text:
+          type: string
+        resume_text:
+          type: string
+          description: Text extracted from the resume PDF
+        source:
+          type: object
+          nullable: true
+          description: Set when the profile came from the screening pipeline
+          properties:
+            batchId: { type: string }
+            resumeId: { type: string }
+            bucket: { type: string }
+            key: { type: string }
+        created_at:
+          type: string
+          format: date-time
+
+    WorkExperience:
+      type: object
+      properties:
+        title: { type: string }
+        organisation: { type: string }
+        start: { type: string }
+        end: { type: string }
+        summary: { type: string }
+
+    Education:
+      type: object
+      properties:
+        qualification: { type: string }
+        institution: { type: string }
+        completed: { type: string }
+
+    ScreeningResult:
+      type: object
+      properties:
+        batch_id: { type: string, example: batch-001 }
+        resume_id: { type: string, example: res-001 }
+        job_opening_id: { type: string, example: job-001 }
+        candidate_id: { type: string, example: cand-001 }
+        status:
+          type: string
+          enum: [processing, scored, unparsable, failed]
+        score: { type: integer, nullable: true, minimum: 0, maximum: 100 }
+        meets_must_haves: { type: boolean, nullable: true }
+        unmet_must_have_ids:
+          type: array
+          items: { type: string }
+        assessments:
+          type: array
+          items:
+            type: object
+            properties:
+              criterion_id: { type: string }
+              met: { type: boolean }
+              score: { type: integer }
+              evidence: { type: string }
+        justification: { type: string, nullable: true }
+        error: { type: string, nullable: true }
+        attempts: { type: integer }
+        updated_at: { type: string, format: date-time }
+
+    CandidateProfileCreate:
+      type: object
+      required: [full_name, email]
+      properties:
+        job_opening_id:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        skills:
+          type: array
+          items:
+            type: string
+        resume_text:
+          type: string
+
+    CandidateProfileUpdate:
+      type: object
+      description: job_opening_id cannot be changed.
+      properties:
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        skills:
+          type: array
+          description: Replaces the whole list.
+          items:
+            type: string
+        resume_text:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    NotFound:
+      description: Candidate profile not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Missing or invalid fields
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
